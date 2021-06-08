@@ -1,0 +1,246 @@
+HET    SSN  A   1     121     Pseudo atom representation of DNA     
+HETNAM     SSN Body and ribbon spatial coordinates               
+FORMUL  1   SSN    C20 N20 P21
+ATOM      1   A0 SSN A           6.941   5.815   6.412  1.00  1.00           C
+ATOM      2   A0 SSN A           6.533   5.883   6.302  1.00  1.00           C
+ATOM      3   A0 SSN A           6.199   5.927   6.148  1.00  1.00           C
+ATOM      4   A0 SSN A           5.809   6.027   6.011  1.00  1.00           C
+ATOM      5   A1 SSN A           5.436   6.110   5.883  1.00  1.00           C
+ATOM      6   A1 SSN A           5.100   6.153   5.765  1.00  1.00           C
+ATOM      7   A1 SSN A           4.719   6.114   5.611  1.00  1.00           C
+ATOM      8   A1 SSN A           4.329   6.073   5.526  1.00  1.00           C
+ATOM      9   A1 SSN A           3.939   6.008   5.485  1.00  1.00           C
+ATOM     10   A0 SSN A          -4.314   4.152  -8.914  1.00  1.00           C
+ATOM     11   A0 SSN A          -4.512   3.960  -9.246  1.00  1.00           C
+ATOM     12   A0 SSN A          -4.659   3.787  -9.581  1.00  1.00           C
+ATOM     13   A0 SSN A          -4.771   3.676  -9.951  1.00  1.00           C
+ATOM     14   A0 SSN A          -4.894   3.513 -10.307  1.00  1.00           C
+ATOM     15   A0 SSN A          -5.034   3.361 -10.655  1.00  1.00           C
+ATOM     16   A0 SSN A          -5.097   3.210 -11.017  1.00  1.00           C
+ATOM     17   A0 SSN A          -5.132   2.960 -11.354  1.00  1.00           C
+ATOM     18   A0 SSN A          -5.064   2.718 -11.676  1.00  1.00           C
+ATOM     19   A0 SSN A          -4.969   2.394 -11.931  1.00  1.00           C
+ATOM     20   A0 SSN A          -4.832   2.061 -12.110  1.00  1.00           C
+ATOM     21   A0 SSN A          -4.693   1.725 -12.350  1.00  1.00           C
+ATOM     22   A0 SSN A          -9.878   5.760   6.144  1.00  1.00           C
+ATOM     23   A0 SSN A          -9.670   5.509   5.912  1.00  1.00           C
+ATOM     24   A0 SSN A          -9.441   5.250   5.642  1.00  1.00           C
+ATOM     25   A0 SSN A          -9.178   4.994   5.465  1.00  1.00           C
+ATOM     26   A0 SSN A          -8.977   4.687   5.326  1.00  1.00           C
+ATOM     27   A0 SSN A          -8.843   4.393   5.099  1.00  1.00           C
+ATOM     28   A0 SSN A          -8.677   4.034   4.911  1.00  1.00           C
+ATOM     29   A0 SSN A          -8.425   3.770   4.773  1.00  1.00           C
+ATOM     30   A0 SSN A          -8.224   3.465   4.600  1.00  1.00           C
+ATOM     31   A0 SSN A          -8.064   3.159   4.326  1.00  1.00           C
+ATOM     32   A0 SSN A          -7.968   2.829   4.145  1.00  1.00           C
+ATOM     33   A0 SSN A          -7.825   2.430   3.999  1.00  1.00           C
+ATOM     34   A0 SSN A          -7.735   2.061   3.863  1.00  1.00           C
+ATOM     35   A0 SSN A          -7.617   1.729   3.738  1.00  1.00           C
+ATOM     36   A0 SSN A          -7.524   1.298   3.637  1.00  1.00           C
+ATOM     37   A0 SSN A          -7.513   0.868   3.547  1.00  1.00           C
+ATOM     38   A0 SSN A          -7.496   0.440   3.545  1.00  1.00           C
+ATOM     39   A0 SSN A          -7.510   0.035   3.596  1.00  1.00           C
+ATOM     40   A0 SSN A          -7.497  -0.345   3.727  1.00  1.00           C
+ATOM     41   A0 SSN A          -7.608  -0.781   3.853  1.00  1.00           C
+ATOM     42   A0 SSN A          -7.750  -1.190   3.961  1.00  1.00           C
+ATOM     43   A0 SSN A          -7.885  -1.551   4.044  1.00  1.00           C
+ATOM     44   A0 SSN A          -8.043  -1.885   4.142  1.00  1.00           C
+ATOM     45   A1 SSN A          -8.171  -2.215   4.308  1.00  1.00           C
+ATOM     46   A1 SSN A          -8.150  -2.591   4.426  1.00  1.00           C
+ATOM     47   A1 SSN A          -8.086  -2.963   4.430  1.00  1.00           C
+ATOM     48   A1 SSN A          -7.964  -3.354   4.484  1.00  1.00           C
+ATOM     49   A1 SSN A          -7.811  -3.734   4.494  1.00  1.00           C
+ATOM     50   A1 SSN A           6.171  -9.819  -2.173  1.00  1.00           C
+ATOM     51   A1 SSN A           6.485  -9.549  -2.004  1.00  1.00           C
+ATOM     52   A1 SSN A           6.782  -9.305  -1.805  1.00  1.00           C
+ATOM     53   A1 SSN A           7.018  -9.105  -1.574  1.00  1.00           C
+ATOM     54   A1 SSN A           7.300  -8.973  -1.325  1.00  1.00           C
+ATOM     55   A0 SSN A           7.513  -8.818  -1.029  1.00  1.00           C
+ATOM     56   A0 SSN A           7.627  -8.578  -0.687  1.00  1.00           C
+ATOM     57   A0 SSN A           7.699  -8.362  -0.344  1.00  1.00           C
+ATOM     58   A0 SSN A           7.738  -8.125  -0.039  1.00  1.00           C
+ATOM     59   A0 SSN A           7.802  -7.882   0.290  1.00  1.00           C
+ATOM     60   A0 SSN A           7.787  -7.695   0.598  1.00  1.00           C
+ATOM     61   A0 SSN A           7.786  -7.572   0.987  1.00  1.00           C
+ATOM     62   A0 SSN A           7.882  -7.426   1.359  1.00  1.00           C
+ATOM     63   A0 SSN A           8.006  -7.242   1.698  1.00  1.00           C
+ATOM     64   A0 SSN A           8.154  -7.196   2.056  1.00  1.00           C
+ATOM     65   A0 SSN A           8.273  -7.102   2.461  1.00  1.00           C
+ATOM     66   A0 SSN A           8.317  -7.013   2.824  1.00  1.00           C
+ATOM     67   A0 SSN A           8.326  -6.921   3.199  1.00  1.00           C
+ATOM     68   A0 SSN A           8.277  -6.844   3.582  1.00  1.00           C
+ATOM     69   A0 SSN A           8.211  -6.739   3.966  1.00  1.00           C
+ATOM     70   A0 SSN A           8.124  -6.529   4.309  1.00  1.00           C
+ATOM     71   A0 SSN A           7.956  -6.309   4.618  1.00  1.00           C
+ATOM     72   A0 SSN A           7.756  -6.079   4.934  1.00  1.00           C
+ATOM     73   A0 SSN A           7.612  -5.782   5.199  1.00  1.00           C
+ATOM     74   A0 SSN A           7.570  -5.438   5.406  1.00  1.00           C
+ATOM     75   A1 SSN A           7.542  -5.103   5.570  1.00  1.00           C
+ATOM     76   A1 SSN A           7.492  -4.722   5.715  1.00  1.00           C
+ATOM     77   A1 SSN A           7.532  -4.379   5.924  1.00  1.00           C
+ATOM     78   A1 SSN A           7.623  -4.017   6.054  1.00  1.00           C
+ATOM     79   A1 SSN A           7.786  -3.665   6.072  1.00  1.00           C
+ATOM     80   A0 SSN A           7.892  -3.240   6.096  1.00  1.00           C
+ATOM     81   A0 SSN A           7.968  -2.854   6.167  1.00  1.00           C
+ATOM     82   A0 SSN A           7.999  -2.448   6.288  1.00  1.00           C
+ATOM     83   A0 SSN A           7.969  -2.053   6.371  1.00  1.00           C
+ATOM     84   A0 SSN A           7.973  -1.658   6.398  1.00  1.00           C
+ATOM     85   A0 SSN A           7.928  -1.256   6.477  1.00  1.00           C
+ATOM     86   A0 SSN A           7.874  -0.852   6.524  1.00  1.00           C
+ATOM     87   A0 SSN A           7.801  -0.491   6.527  1.00  1.00           C
+ATOM     88   A0 SSN A           7.666  -0.083   6.543  1.00  1.00           C
+ATOM     89   A0 SSN A           7.571   0.335   6.579  1.00  1.00           C
+ATOM     90   A0 SSN A          -3.556  -0.501  -6.880  1.00  1.00           C
+ATOM     91   A0 SSN A          -3.485  -0.348  -6.516  1.00  1.00           C
+ATOM     92   A0 SSN A          -3.368  -0.192  -6.178  1.00  1.00           C
+ATOM     93   A0 SSN A          -3.207  -0.045  -5.833  1.00  1.00           C
+ATOM     94   A0 SSN A          -3.063   0.131  -5.511  1.00  1.00           C
+ATOM     95   A1 SSN A          -2.968   0.261  -5.202  1.00  1.00           C
+ATOM     96   A1 SSN A          -2.859   0.495  -4.902  1.00  1.00           C
+ATOM     97   A1 SSN A          -2.720   0.710  -4.617  1.00  1.00           C
+ATOM     98   A1 SSN A          -2.619   0.976  -4.328  1.00  1.00           C
+ATOM     99   A1 SSN A          -2.523   1.252  -4.081  1.00  1.00           C
+ATOM    100   A1 SSN A          -2.424   1.452  -3.733  1.00  1.00           C
+ATOM    101   A1 SSN A          -2.312   1.613  -3.397  1.00  1.00           C
+ATOM    102   A1 SSN A          -2.231   1.810  -3.058  1.00  1.00           C
+ATOM    103   A1 SSN A          -2.322   2.105  -2.791  1.00  1.00           C
+ATOM    104   A1 SSN A          -2.291   2.392  -2.505  1.00  1.00           C
+ATOM    105   A0 SSN A          -2.276   2.629  -2.220  1.00  1.00           C
+ATOM    106   A0 SSN A          -2.276   2.906  -1.923  1.00  1.00           C
+ATOM    107   A0 SSN A          -2.214   3.156  -1.660  1.00  1.00           C
+ATOM    108   A0 SSN A          -2.137   3.463  -1.406  1.00  1.00           C
+ATOM    109   A0 SSN A          -2.015   3.772  -1.181  1.00  1.00           C
+ATOM    110   A1 SSN A          -1.940   4.119  -0.914  1.00  1.00           C
+ATOM    111   A1 SSN A          -1.851   4.430  -0.688  1.00  1.00           C
+ATOM    112   A1 SSN A          -1.822   4.783  -0.483  1.00  1.00           C
+ATOM    113   A1 SSN A          -1.735   5.108  -0.269  1.00  1.00           C
+ATOM    114   A1 SSN A          -1.584   5.392  -0.009  1.00  1.00           C
+ATOM    115   A0 SSN A          -1.444   5.701   0.270  1.00  1.00           C
+ATOM    116   A0 SSN A          -1.295   6.021   0.460  1.00  1.00           C
+ATOM    117   A0 SSN A          -1.242   6.364   0.638  1.00  1.00           C
+ATOM    118   A0 SSN A          -1.174   6.715   0.765  1.00  1.00           C
+ATOM    119   A0 SSN A          -1.130   7.109   0.886  1.00  1.00           C
+ATOM    120   A1 SSN A          -1.133   7.491   0.992  1.00  1.00           C
+ATOM    121   A1 SSN A          -1.079   7.889   1.104  1.00  1.00           C
+CONECT    1    2
+CONECT    2    1    3
+CONECT    3    2    4
+CONECT    4    3    5
+CONECT    5    4    6
+CONECT    6    5    7
+CONECT    7    6    8
+CONECT    8    7    9
+CONECT    9    8   10
+CONECT   10    9   11
+CONECT   11   10   12
+CONECT   12   11   13
+CONECT   13   12   14
+CONECT   14   13   15
+CONECT   15   14   16
+CONECT   16   15   17
+CONECT   17   16   18
+CONECT   18   17   19
+CONECT   19   18   20
+CONECT   20   19   21
+CONECT   21   20   22
+CONECT   22   21   23
+CONECT   23   22   24
+CONECT   24   23   25
+CONECT   25   24   26
+CONECT   26   25   27
+CONECT   27   26   28
+CONECT   28   27   29
+CONECT   29   28   30
+CONECT   30   29   31
+CONECT   31   30   32
+CONECT   32   31   33
+CONECT   33   32   34
+CONECT   34   33   35
+CONECT   35   34   36
+CONECT   36   35   37
+CONECT   37   36   38
+CONECT   38   37   39
+CONECT   39   38   40
+CONECT   40   39   41
+CONECT   41   40   42
+CONECT   42   41   43
+CONECT   43   42   44
+CONECT   44   43   45
+CONECT   45   44   46
+CONECT   46   45   47
+CONECT   47   46   48
+CONECT   48   47   49
+CONECT   49   48   50
+CONECT   50   49   51
+CONECT   51   50   52
+CONECT   52   51   53
+CONECT   53   52   54
+CONECT   54   53   55
+CONECT   55   54   56
+CONECT   56   55   57
+CONECT   57   56   58
+CONECT   58   57   59
+CONECT   59   58   60
+CONECT   60   59   61
+CONECT   61   60   62
+CONECT   62   61   63
+CONECT   63   62   64
+CONECT   64   63   65
+CONECT   65   64   66
+CONECT   66   65   67
+CONECT   67   66   68
+CONECT   68   67   69
+CONECT   69   68   70
+CONECT   70   69   71
+CONECT   71   70   72
+CONECT   72   71   73
+CONECT   73   72   74
+CONECT   74   73   75
+CONECT   75   74   76
+CONECT   76   75   77
+CONECT   77   76   78
+CONECT   78   77   79
+CONECT   79   78   80
+CONECT   80   79   81
+CONECT   81   80   82
+CONECT   82   81   83
+CONECT   83   82   84
+CONECT   84   83   85
+CONECT   85   84   86
+CONECT   86   85   87
+CONECT   87   86   88
+CONECT   88   87   89
+CONECT   89   88   90
+CONECT   90   89   91
+CONECT   91   90   92
+CONECT   92   91   93
+CONECT   93   92   94
+CONECT   94   93   95
+CONECT   95   94   96
+CONECT   96   95   97
+CONECT   97   96   98
+CONECT   98   97   99
+CONECT   99   98  100
+CONECT  100   99  101
+CONECT  101  100  102
+CONECT  102  101  103
+CONECT  103  102  104
+CONECT  104  103  105
+CONECT  105  104  106
+CONECT  106  105  107
+CONECT  107  106  108
+CONECT  108  107  109
+CONECT  109  108  110
+CONECT  110  109  111
+CONECT  111  110  112
+CONECT  112  111  113
+CONECT  113  112  114
+CONECT  114  113  115
+CONECT  115  114  116
+CONECT  116  115  117
+CONECT  117  116  118
+CONECT  118  117  119
+CONECT  119  118  120
+CONECT  120  119  121
+CONECT  121  120
+END
