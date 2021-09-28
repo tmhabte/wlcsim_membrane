@@ -63,11 +63,11 @@ def gen_pymol_file(r_poly, meth_seq = np.array([]), hp1_seq = np.array([]), limi
             if max_method == 'mid_slice':
                 ind_save, connect_left, connect_right = find_ind_mid_slice(r_poly, n_max, ring, box_adjust_l, box_adjust_r)
         else:
-            ind_save, connect_left, connect_right = find_ind_total(r_poly, ring)
+            ind_save, connect_left, connect_right = find_ind_total(r_poly, ring, box_adjust_l, box_adjust_r)
 
     # Write the preamble to the pymol file
 
-    f.write('HET    %3s  %1s%4d   %5d     %-38s\n' % (resname, chain, resnum, numresidues, descrip))
+    f.write('HET    %3s  %1s%4d   %5d     %-38s\n' % (resname, str(chain), resnum, numresidues, descrip))
     f.write('HETNAM     %3s %-50s\n' % (resname, chemicalname))
     f.write('FORMUL  1   %3s    C20 N20 P21\n' % (resname))
 
@@ -80,9 +80,19 @@ def gen_pymol_file(r_poly, meth_seq = np.array([]), hp1_seq = np.array([]), limi
                 atomname = 'A' + str(int(meth_seq[ind]))
             else:
                 atomname = atomname1
+            # original
+            #f.write('ATOM%7d %4s %3s %1s        %8.3f%8.3f%8.3f%6.2f%6.2f           C\n' %
+            #        (count + 1, atomname, resname, chain, r_poly[ind, 0], r_poly[ind, 1], r_poly[ind, 2], 1.00, 1.00))
+            
+            # my version! NO STAR BURSTS! but wrong coloring
+            #f.write('ATOM%7d %4s        %8.3f%8.3f%8.3f%6.2f%6.2f           C\n' %
+            #        (count + 1, atomname, r_poly[ind, 0], r_poly[ind, 1], r_poly[ind, 2], 1.00, 1.00))
+            
+            #test dummy- resname and chain are IMPORTANT
             f.write('ATOM%7d %4s %3s %1s        %8.3f%8.3f%8.3f%6.2f%6.2f           C\n' %
-                    (count + 1, atomname, resname, chain, r_poly[ind, 0], r_poly[ind, 1], r_poly[ind, 2], 1.00, 1.00))
+                    (count + 1, atomname, "SSN", "A", r_poly[ind, 0], r_poly[ind, 1], r_poly[ind, 2], 1.00, 1.00))
             count += 1
+
     numresidues_save = count
 
     # Add a nucleus bead to the pymol file
@@ -92,10 +102,10 @@ def gen_pymol_file(r_poly, meth_seq = np.array([]), hp1_seq = np.array([]), limi
     r_com = np.mean(r_poly, axis = 0)
     if add_com:
         f.write('ATOM%7d %4s %3s %1s        %8.3f%8.3f%8.3f%6.2f%6.2f           C\n' %
-                (count + 1, atomname, resname, chain, r_com[0], r_com[1], r_com[2], 1.00, 1.00))
+                (count + 1, atomname, resname, str(chain), r_com[0], r_com[1], r_com[2], 1.00, 1.00))
 
     # Define the connectivity in the chain
-
+    
     count = 0
     for ind in range(numresidues):
         if ind_save[ind] == 1:
@@ -117,6 +127,7 @@ def gen_pymol_file(r_poly, meth_seq = np.array([]), hp1_seq = np.array([]), limi
             elif connect_left[ind] == 0 and connect_right[ind] == 0:
                 f.write('CONECT%5d\n' % (count + 1))
             count += 1
+    
     # Close the file
     f.write('END')
     f.close()
@@ -147,13 +158,13 @@ def find_ind_mid_slice(r_poly, n_max, ring, box_adjust_l, box_adjust_r):
     return ind_save, connect_left, connect_right
 
 
-def find_ind_total(r_poly, ring):
+def find_ind_total(r_poly, ring, box_adjust_l, box_adjust_r):
     r"""
 
     """
 
     ind_save = np.ones(len(r_poly[:, 0]))
-    connect_left, connect_right = find_connect(ind_save, ring)
+    connect_left, connect_right = find_connect(ind_save, ring, box_adjust_l, box_adjust_r)
 
     return ind_save, connect_left, connect_right
 
