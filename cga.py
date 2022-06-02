@@ -297,9 +297,25 @@ def get_sf3(n_p, n_b, all_snaps_vect_copoly, k_vecs):
     s3_matrix[1][1][1] = s3_sim_BBB
     return s3_matrix
 
-def get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, k_vecs):
+def get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, k_vecs, FA, N):
     num_snapshots = int(len(all_snaps_vect_copoly)/(n_p * n_b))
     k1_vec, k2_vec, k3_vec = k_vecs
+    
+    if np.linalg.norm(k3_vec) < 1e-5:
+        s3 = np.zeros((2,2,2),dtype=type(1+1j))
+
+        FB = 1.0-FA
+        s2 = get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, k1_vec, FA, N)
+        s3[0][0][0] = s2[0][0]*FA*N
+        s3[0][0][1] = s2[0][0]*FB*N
+        s3[0][1][0] = s2[0][1]*FA*N
+        s3[0][1][1] = s2[0][1]*FB*N
+        s3[1][0][0] = s2[1][0]*FA*N
+        s3[1][0][1] = s2[1][0]*FB*N
+        s3[1][1][0] = s2[1][1]*FA*N
+        s3[1][1][1] = s2[1][1]*FB*N
+        return s3
+    
     i_snap_f = num_snapshots-1
     i_snap_0 = 0
     n_b_calc = n_b
@@ -503,7 +519,7 @@ def gam3(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
     if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5 and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5):
         raise('Qs must have same length')
         
-    s3 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, Ks)
+    s3 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, Ks, FA, N)
     s2inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1, FA, N), K1, N)
     val = 0
     for I0, I1, I2 in product([0,1], repeat=3):
@@ -527,11 +543,11 @@ def gam4(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
     #print("False is goodie bro!")
     s4 = get_sf4_vect(n_p, n_b, all_snaps_vect_copoly, Ks)
     #print("s4 ", s4==s4)
-    s31 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K2, -K1-K2]))
+    s31 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K2, -K1-K2]), FA, N)
     #print("s31 ", s31 == s31)
-    s32 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K3, -K1-K3]))
+    s32 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K3, -K1-K3]), FA, N)
     #print("s32 ",s32 == s32)
-    s33 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K4, -K1-K4]))
+    s33 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K4, -K1-K4]), FA, N)
     #print("s33 ", s33 == s33)
     
     s2inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1, FA, N), K1, N)
