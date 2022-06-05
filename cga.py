@@ -14,6 +14,9 @@ import wignerD as wd # wigner D object used to store pre-calculated values
 pset=propagator.prop_set(nlam=10) # nlam sepcifies number of angular eigenvalues
 wigset = wd.wigner_d_vals()
 
+def r2(N):
+    return N - 0.5*(1-np.exp(-2*N))
+
 def wlc_cga_vect(N, n_p, n_b, f_a, num_snapshots):
     #num_snapshots = 1000
     #n_p = 15
@@ -146,7 +149,7 @@ def wlc_cga(n_p, n_b, f_a, num_snapshots):
 
 def spin(n_p, n_b, all_snaps_vect_copoly, N, FA):
     CHI = 0
-    K0 = 8#1.32#/np.sqrt(r2(N))
+    K0 = 1/np.sqrt(r2(N))
     
     KS = optimize.fmin(lambda K: np.real(gam2(n_p, n_b, all_snaps_vect_copoly, N, np.array([K, 0, 0]), CHI, FA)), K0, disp=False)
     
@@ -212,7 +215,7 @@ def get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, k_vec, FA, N):
 #             s2_sim_AB += np.sum(s_mat1[:,i_snap*n_p*n_b+n_b*i_p:(i_snap*n_p*n_b+n_b*i_p)+n_b], axis = 1) * np.sum(s_mat2_neg[:,i_snap*n_p*n_b+n_b*i_p:(i_snap*n_p*n_b+n_b*i_p)+n_b], axis = 1) / (n_b_calc ** 2 * (num_snapshots) * n_p)
 #             s2_sim_BB += np.sum(s_mat2[:,i_snap*n_p*n_b+n_b*i_p:(i_snap*n_p*n_b+n_b*i_p)+n_b], axis = 1) * np.sum(s_mat2_neg[:,i_snap*n_p*n_b+n_b*i_p:(i_snap*n_p*n_b+n_b*i_p)+n_b], axis = 1) / (n_b_calc ** 2 * (num_snapshots) * n_p)
 #     s2_sim_old = np.array([[s2_sim_AA, s2_sim_AB], [s2_sim_AB, s2_sim_BB]])
-    return s2_sim_test#np.array([[s2_sim_AA, s2_sim_AB], [s2_sim_AB, s2_sim_BB]])
+    return s2_sim_test * (N**2)#np.array([[s2_sim_AA, s2_sim_AB], [s2_sim_AB, s2_sim_BB]])
 
    
 def get_sf2(n_p, n_b, all_snaps_vect_copoly, k_vec):
@@ -261,7 +264,7 @@ def invert_sf2(s2_matrix, K, N):
     s2inv_cga[0,1] = -s2ab/det
     s2inv_cga[1,0] = -s2ba/det
     s2inv_cga[1,1] = s2aa/det
-    return s2inv_cga
+    return s2inv_cga#/(N**2)
 
 def get_sf3(n_p, n_b, all_snaps_vect_copoly, k_vecs):
     num_snapshots = int(len(all_snaps_vect_copoly))
@@ -409,12 +412,12 @@ def get_sf4_vect(n_p, n_b, all_snaps_vect_copoly, k_vecs, N):
     s_mat1i = sigma_i*(np.exp(1j * (np.outer(k1_vec[0], r_i[:, 0]) + np.outer(k1_vec[1], r_i[:, 1]) + np.outer(k1_vec[2], r_i[:, 2]))))   
     s_mat2i = sigma_i*(np.exp(1j * (np.outer(k2_vec[0], r_i[:, 0]) + np.outer(k2_vec[1], r_i[:, 1]) + np.outer(k2_vec[2], r_i[:, 2]))))
     s_mat3i = sigma_i*(np.exp(1j * (np.outer(k3_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
-    s_mat4i = sigma_i*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
+    s_mat4i = sigma_i*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k4_vec[1], r_i[:, 1]) + np.outer(k4_vec[2], r_i[:, 2]))))
 
     s_mat1j = sigma_j*(np.exp(1j * (np.outer(k1_vec[0], r_i[:, 0]) + np.outer(k1_vec[1], r_i[:, 1]) + np.outer(k1_vec[2], r_i[:, 2]))))   
     s_mat2j = sigma_j*(np.exp(1j * (np.outer(k2_vec[0], r_i[:, 0]) + np.outer(k2_vec[1], r_i[:, 1]) + np.outer(k2_vec[2], r_i[:, 2]))))
     s_mat3j = sigma_j*(np.exp(1j * (np.outer(k3_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
-    s_mat4j = sigma_j*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
+    s_mat4j = sigma_j*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k4_vec[1], r_i[:, 1]) + np.outer(k4_vec[2], r_i[:, 2]))))
     
     polys1i = np.array(np.split(s_mat1i.T, n_p*num_snapshots))
     polys1j = np.array(np.split(s_mat1j.T, n_p*num_snapshots))
@@ -425,45 +428,54 @@ def get_sf4_vect(n_p, n_b, all_snaps_vect_copoly, k_vecs, N):
     polys4i = np.array(np.split(s_mat4i.T, n_p*num_snapshots))
     polys4j = np.array(np.split(s_mat4j.T, n_p*num_snapshots))
     
-    sums_AAAA = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3i, axis = 1) * np.sum(polys4i, axis = 1)
-    sums_AAAA = sums_AAAA / (n_b_calc ** 4 * (num_snapshots) * n_p)
-    s4_sim_AAAA = np.sum(sums_AAAA)
-    
-    sums_AAAB = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3i, axis = 1) * np.sum(polys4j, axis = 1)
-    sums_AAAB = sums_AAAB / (n_b_calc ** 4 * (num_snapshots) * n_p)
-    s4_sim_AAAB = np.sum(sums_AAAB)
-    
-    sums_AABB = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
-    sums_AABB = sums_AABB / (n_b_calc ** 4 * (num_snapshots) * n_p)
-    s4_sim_AABB = np.sum(sums_AABB)
-    
-    sums_ABBB = np.sum(polys1i, axis = 1) * np.sum(polys2j, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
-    sums_ABBB = sums_ABBB / (n_b_calc ** 4 * (num_snapshots) * n_p)
-    s4_sim_ABBB = np.sum(sums_ABBB)
-    
-    sums_BBBB = np.sum(polys1j, axis = 1) * np.sum(polys2j, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
-    sums_BBBB = sums_BBBB / (n_b_calc ** 4 * (num_snapshots) * n_p)
-    s4_sim_BBBB = np.sum(sums_BBBB)
-    
-#     for i_snap in range(num_snapshots):
-#         r_snap = all_snaps_vect_copoly[i_snap]
-#         for i_p in range(n_p):
-#             i_0 = n_b * i_p
-#             i_f = i_0 + n_b_calc
-#             start_col = i_snap*n_p*n_b+n_b*i_p
+    ###########################################
+    polys1_alph = [polys1i, polys1j]
+    polys2_alph = [polys2i, polys2j]
+    polys3_alph = [polys3i, polys3j]
+    polys4_alph = [polys4i, polys4j]
 
+    for a1, a2, a3, a4 in product([0,1], repeat=4):
+        if [a1,a2,a3,a4] in [[0,0,1,0], [0,1,0,0], [1,0,0,0],
+                             [0,0,1,1], [0,1,1,0], [0,1,0,1]]:
+            continue
+        polys1_cur = polys1_alph[a1]
+        polys2_cur = polys2_alph[a2]
+        polys3_cur = polys3_alph[a3]
+        polys4_cur = polys4_alph[a4]
+        s4_matrix[a1][a2][a3][a4] = np.sum(((np.sum(polys1_cur, axis = 1) * np.sum(polys2_cur, axis = 1) * np.sum(polys3_cur, axis = 1) * np.sum(polys4_cur, axis = 1)) / (n_b_calc ** 4 * (num_snapshots) * n_p)))
 
-#             s4_sim_AAAA += np.sum(s_mat1i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat2i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat3i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat4i[:, start_col:start_col+n_b], axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-#             s4_sim_AAAB += np.sum(s_mat1i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat2i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat3j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat4j[:, start_col:start_col+n_b], axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-#             s4_sim_AABB += np.sum(s_mat1i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat2i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat3j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat4j[:, start_col:start_col+n_b], axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-#             s4_sim_ABBB += np.sum(s_mat1i[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat2j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat3j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat4j[:, start_col:start_col+n_b], axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-#             s4_sim_BBBB += np.sum(s_mat1j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat2j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat3j[:, start_col:start_col+n_b], axis = 1) * np.sum(s_mat4j[:, start_col:start_col+n_b], axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-
-    s4_matrix[0][0][0][0] = s4_sim_AAAA
-    s4_matrix[0][0][0][1] = s4_matrix[0][0][1][0] = s4_matrix[0][1][0][0] = s4_matrix[1][0][0][0] = s4_sim_AAAB
-    s4_matrix[0][0][1][1] = s4_matrix[0][1][0][1] = s4_matrix[1][0][0][1] = s4_matrix[1][0][1][0] = s4_matrix[1][1][0][0] = s4_matrix[0][1][1][0] = s4_sim_AABB
-    s4_matrix[0][1][1][1] = s4_matrix[1][1][0][1] = s4_matrix[1][0][1][1] = s4_matrix[1][1][1][0] = s4_sim_ABBB
-    s4_matrix[1][1][1][1] = s4_sim_BBBB
+    # use Leibler's identities
+    s4_matrix[0][0][1][0], s4_matrix[0][1][0][0], s4_matrix[1][0][0][0] = [s4_matrix[0][0][0][1]]*3
+    s4_matrix[0][0][1][1] = s4_matrix[1][1][0][0]
+    s4_matrix[0][1][1][0] = s4_matrix[1][0][0][1]
+    s4_matrix[0][1][0][1] = s4_matrix[1][0][1][0]
+    ######################################################
+    
+#     sums_AAAA = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3i, axis = 1) * np.sum(polys4i, axis = 1)
+#     sums_AAAA = sums_AAAA / (n_b_calc ** 4 * (num_snapshots) * n_p)
+#     s4_sim_AAAA = np.sum(sums_AAAA)
+    
+#     sums_AAAB = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3i, axis = 1) * np.sum(polys4j, axis = 1)
+#     sums_AAAB = sums_AAAB / (n_b_calc ** 4 * (num_snapshots) * n_p)
+#     s4_sim_AAAB = np.sum(sums_AAAB)
+    
+#     sums_AABB = np.sum(polys1i, axis = 1) * np.sum(polys2i, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
+#     sums_AABB = sums_AABB / (n_b_calc ** 4 * (num_snapshots) * n_p)
+#     s4_sim_AABB = np.sum(sums_AABB)
+    
+#     sums_ABBB = np.sum(polys1i, axis = 1) * np.sum(polys2j, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
+#     sums_ABBB = sums_ABBB / (n_b_calc ** 4 * (num_snapshots) * n_p)
+#     s4_sim_ABBB = np.sum(sums_ABBB)
+    
+#     sums_BBBB = np.sum(polys1j, axis = 1) * np.sum(polys2j, axis = 1) * np.sum(polys3j, axis = 1) * np.sum(polys4j, axis = 1)
+#     sums_BBBB = sums_BBBB / (n_b_calc ** 4 * (num_snapshots) * n_p)
+#     s4_sim_BBBB = np.sum(sums_BBBB)
+    
+#     s4_matrix[0][0][0][0] = s4_sim_AAAA
+#     s4_matrix[0][0][0][1] = s4_matrix[0][0][1][0] = s4_matrix[0][1][0][0] = s4_matrix[1][0][0][0] = s4_sim_AAAB
+#     s4_matrix[0][0][1][1] = s4_matrix[0][1][0][1] = s4_matrix[1][0][0][1] = s4_matrix[1][0][1][0] = s4_matrix[1][1][0][0] = s4_matrix[0][1][1][0] = s4_sim_AABB
+#     s4_matrix[0][1][1][1] = s4_matrix[1][1][0][1] = s4_matrix[1][0][1][1] = s4_matrix[1][1][1][0] = s4_sim_ABBB
+#     s4_matrix[1][1][1][1] = s4_sim_BBBB
     return s4_matrix * (N ** 4)
 
 def get_sf4(n_p, n_b, all_snaps_vect_copoly, k_vecs):
@@ -492,15 +504,15 @@ def get_sf4(n_p, n_b, all_snaps_vect_copoly, k_vecs):
             s_mat1i = sigma_i*(np.exp(1j * (np.outer(k1_vec[0], r_i[:, 0]) + np.outer(k1_vec[1], r_i[:, 1]) + np.outer(k1_vec[2], r_i[:, 2]))))   
             s_mat2i = sigma_i*(np.exp(1j * (np.outer(k2_vec[0], r_i[:, 0]) + np.outer(k2_vec[1], r_i[:, 1]) + np.outer(k2_vec[2], r_i[:, 2]))))
             s_mat3i = sigma_i*(np.exp(1j * (np.outer(k3_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
-            s_mat4i = sigma_i*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
+            s_mat4i = sigma_i*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k4_vec[1], r_i[:, 1]) + np.outer(k4_vec[2], r_i[:, 2]))))
 
             s_mat1j = sigma_j*(np.exp(1j * (np.outer(k1_vec[0], r_i[:, 0]) + np.outer(k1_vec[1], r_i[:, 1]) + np.outer(k1_vec[2], r_i[:, 2]))))   
             s_mat2j = sigma_j*(np.exp(1j * (np.outer(k2_vec[0], r_i[:, 0]) + np.outer(k2_vec[1], r_i[:, 1]) + np.outer(k2_vec[2], r_i[:, 2]))))
             s_mat3j = sigma_j*(np.exp(1j * (np.outer(k3_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
-            s_mat4j = sigma_j*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k3_vec[1], r_i[:, 1]) + np.outer(k3_vec[2], r_i[:, 2]))))
+            s_mat4j = sigma_j*(np.exp(1j * (np.outer(k4_vec[0], r_i[:, 0]) + np.outer(k4_vec[1], r_i[:, 1]) + np.outer(k4_vec[2], r_i[:, 2]))))
 
             s4_sim_AAAA += np.sum(s_mat1i, axis = 1) * np.sum(s_mat2i, axis = 1) * np.sum(s_mat3i, axis = 1) * np.sum(s_mat4i, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
-            s4_sim_AAAB += np.sum(s_mat1i, axis = 1) * np.sum(s_mat2i, axis = 1) * np.sum(s_mat3j, axis = 1) * np.sum(s_mat4j, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
+            s4_sim_AAAB += np.sum(s_mat1i, axis = 1) * np.sum(s_mat2i, axis = 1) * np.sum(s_mat3i, axis = 1) * np.sum(s_mat4j, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
             s4_sim_AABB += np.sum(s_mat1i, axis = 1) * np.sum(s_mat2i, axis = 1) * np.sum(s_mat3j, axis = 1) * np.sum(s_mat4j, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
             s4_sim_ABBB += np.sum(s_mat1i, axis = 1) * np.sum(s_mat2j, axis = 1) * np.sum(s_mat3j, axis = 1) * np.sum(s_mat4j, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
             s4_sim_BBBB += np.sum(s_mat1j, axis = 1) * np.sum(s_mat2j, axis = 1) * np.sum(s_mat3j, axis = 1) * np.sum(s_mat4j, axis = 1) / (n_b_calc ** 4 * (i_snap_f - i_snap_0 + 1) * n_p)
@@ -518,8 +530,8 @@ def gam2(n_p, n_b, all_snaps_vect_copoly, N, K, CHI, FA):
     G = 0
     for I0, I1 in product([0,1], repeat=2):
         G += s2inv[I0, I1]*D[I0]*D[I1]
-        
-    return -2*CHI*N*N + N*G
+    #print(G) 
+    return (-2*CHI + N*G)#*N
     
 
 def gam3_vertex(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA): #FOR TESTING
@@ -578,13 +590,14 @@ def gam4(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
     
     #print("False is goodie bro!")
     s4 = get_sf4_vect(n_p, n_b, all_snaps_vect_copoly, Ks, N)
-    #print("s4 ", s4==s4)
+    #s4 = s4wlc(pset, wigset, N, FA, Ks)
+    #print("s4: ", s4)
     s31 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K2, -K1-K2]), FA, N)
-    #print("s31 ", s31 == s31)
+    #print("s31: ", s31)
     s32 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K3, -K1-K3]), FA, N)
-    #print("s32 ",s32 == s32)
+    #print("s32: ", s32)
     s33 = get_sf3_vect(n_p, n_b, all_snaps_vect_copoly, np.array([K1, K4, -K1-K4]), FA, N)
-    #print("s33 ", s33 == s33)
+    #print("s33: ", s33)
     
     
     
@@ -605,13 +618,13 @@ def gam4(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
     #newgam4 - replace np.array([K12, 0, 0]) with K1 + K2
     
     s2inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1, FA, N), K1, N)
-    #print("s2inv ", s2inv == s2inv)
+    #print("s2inv: ", s2inv)
     s21inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1 + K2, FA, N), K1 + K2, N)
-    #print("s21inv ", s21inv == s21inv)
+    #print("s21inv: ", s21inv)
     s22inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1 + K3, FA, N), K1 + K3, N)
-    #print("s22inv ", s22inv == s22inv)
+    #print("s22inv: ", s22inv)
     s23inv = invert_sf2(get_sf2_vect(n_p, n_b, all_snaps_vect_copoly, K1 + K4, FA, N), K1 + K4, N)
-    #print("s23inv ", s23inv == s23inv)
+    #print("s23inv: ", s23inv)
 
     ####
     ####
@@ -621,11 +634,28 @@ def gam4(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
     G4 = np.zeros((2,2,2,2),dtype=type(1+1j))
     for a1, a2, a3, a4 in product([0,1], repeat=4):
         for I0, I1 in product([0,1], repeat=2):
-            G4[a1][a2][a3][a4] +=                 s31[a1][a2][I0]*s31[a3][a4][I1]*s21inv[I0][I1] +                 s32[a1][a4][I0]*s32[a2][a3][I1]*s22inv[I0][I1] +                 s33[a1][a3][I0]*s33[a2][a4][I1]*s23inv[I0][I1]
+            G4[a1][a2][a3][a4] += \
+                     np.real(s31[a1][a2][I0])*np.real(s31[a3][a4][I1])*np.real(s21inv[I0][I1]) + \
+                     np.real(s32[a1][a4][I0])*np.real(s32[a2][a3][I1])*np.real(s22inv[I0][I1]) + \
+                     np.real(s33[a1][a3][I0])*np.real(s33[a2][a4][I1])*np.real(s23inv[I0][I1])
     G4 =  G4 - s4
+    #G4 is roughly accurate
+    #print(G4)
+#     print("s2inv: ", s2inv)
+    #s2inv = s2inverse(pset, N, FA, K1)
     
     val = 0
     for I0, I1, I2, I3 in product([0,1], repeat=4):
-        val += np.real(G4[I0][I1][I2][I3] *                (s2inv[I0][0] - s2inv[I0][1])*                (s2inv[I1][0] - s2inv[I1][1])*                (s2inv[I2][0] - s2inv[I2][1])*                (s2inv[I3][0] - s2inv[I3][1]))
+#         print(I0,I1,I2,I3, ":")
+#         print(np.real(G4[I0][I1][I2][I3]))
+#         print(np.real(s2inv[I0][0]) - np.real(s2inv[I0][1]))
+#         print(np.real(s2inv[I1][0]) - np.real(s2inv[I1][1]))
+#         print(np.real(s2inv[I2][0]) - np.real(s2inv[I2][1]))
+#         print(np.real(s2inv[I3][0]) - np.real(s2inv[I3][1]))
+#         print("prod--")
+#         print(np.real(G4[I0][I1][I2][I3]) *                (np.real(s2inv[I0][0]) - np.real(s2inv[I0][1]))*                (np.real(s2inv[I1][0]) - np.real(s2inv[I1][1]))*                (np.real(s2inv[I2][0]) - np.real(s2inv[I2][1]))*                (np.real(s2inv[I3][0]) - np.real(s2inv[I3][1])))
+        
+        val += np.real(G4[I0][I1][I2][I3]) *                (np.real(s2inv[I0][0]) - np.real(s2inv[I0][1]))*                (np.real(s2inv[I1][0]) - np.real(s2inv[I1][1]))*                (np.real(s2inv[I2][0]) - np.real(s2inv[I2][1]))*                (np.real(s2inv[I3][0]) - np.real(s2inv[I3][1]))
+        #print(val)
                 
     return val*(N**3)
