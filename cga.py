@@ -97,24 +97,29 @@ def calc_elastic_constants(DEL):
     return interp_params
 
 def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
-    
+    ## EDIT SO THAT N_B IS SOMETHING YOU CALCULATE given DEL
     if (num_snapshots != 1):
         raise Exception("only one shapshot- increase n_p")
         
-    n_b_calc = n_b
-    l_0 = (N*2) / n_b#.01 # length_kuhn = (10 l_k) = (20 l_p) = (200 l_0) ### length_kuhn = (1 l_k) = (2 l_p) = (200 l_0) #
+#     n_b_calc = n_b
+#     l_0 = (N*2) / n_b#.01 # length_kuhn = (10 l_k) = (20 l_p) = (200 l_0) ### length_kuhn = (1 l_k) = (2 l_p) = (200 l_0) #
     l_p = 1
-    length_kuhn = n_b * l_0 / (l_p*2)
-    kappa = l_p/l_0
+#     length_kuhn = n_b * l_0 / (l_p*2)
+#     kappa = l_p/l_0
     #all_snaps_vect_copoly = np.zeros(num_snapshots, dtype=object)
 
+    n_b = int( (N*2)/DEL ) #N in kuhn lenghts, DEL in persistence lengths
+    
+    if (n_b == 0):
+        raise Exception("DEL too big for N")
+        
     EPS_B, GAM, EPS_PAR, EPS_PERP, ETA = calc_elastic_constants(DEL)
 
-#     EPS_B = 1.6086/DEL
-#     EPS_PAR = 69140/(DEL * l_p**2)
-#     EPS_PERP = 1.6082e5/(DEL*l_p**2)
-#     GAM = .99846*l_p*DEL
-#     AIDA = 249/l_p
+#     EPS_B = EPS_B/DEL
+#     EPS_PAR = EPS_PAR/(DEL * l_p**2)
+#     EPS_PERP = EPS_PERP/(DEL*l_p**2)
+#     GAM = GAM*l_p*DEL
+#     ETA = ETA/l_p
 
     axes_1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     origin_1 = np.array([0, 0, 0])
@@ -129,7 +134,7 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
     phi = 2*np.pi*np.random.rand(n_p)
     theta = np.arccos(stats.uniform(-1, 2).rvs(n_p))
     u2 = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)]).T
-    r2 = u2 * l_0
+    r2 = u2 * DEL#* l_0
     r_output[1::n_b] = r2
     u_output[1::n_b] = u2
     #for poly in range(n_p):
@@ -148,7 +153,7 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         r_perp = np.random.normal(0, (A_eff + EPS_PERP/DEL)**-0.5, n_p)
 
         # combine to find next r
-        r_prime = l_0*np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T
+        r_prime = DEL*np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T  ######## SHOULDNT MULTPLY L0????? #############
 
         # pull u_i+1
         #v = np.array([np.zeros(n_p), B*r_perp, -V0*np.ones(n_p)])# + -V0*np.array([0, 0, 1])
@@ -157,11 +162,11 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         rho = (1 / v_mag) * np.log(np.exp(-v_mag)+r*(np.exp(v_mag)-np.exp(-v_mag)))
         theta_1 = np.arccos(rho) #angle between ui+1 and v
         #theta_2 = np.arccos(np.dot(v, np.array([0,0,1]))/v_mag) #angle between v and ui
-        theta_2 = np.arccos(((EPS_B)/DEL)/v_mag)
+        theta_2 = np.arccos((EPS_B/DEL)/v_mag)
         theta = theta_1+theta_2
         u_prime = (np.array([np.sin(theta)*np.cos(phi), 0+np.sin(theta)*np.sin(phi), np.cos(theta)])).T
 
-        # convert all from ui frame of ref to global frame of ref
+        # convert all from "ui frame of ref" to global frame of ref
         z_prime = u_output[bead+1::n_b]
         #z_prime = z_prime/np.linalg.norm(z_prime, axis = -1)[:, np.newaxis] to normalize- SHOULDNT NEED
         x_prime = np.random.randn(n_p, 3)
