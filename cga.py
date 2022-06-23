@@ -97,18 +97,11 @@ def calc_elastic_constants(DEL):
     return interp_params
 
 def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
-    ## EDIT SO THAT N_B IS SOMETHING YOU CALCULATE given DEL
     if (num_snapshots != 1):
         raise Exception("only one shapshot- increase n_p")
         
-#     n_b_calc = n_b
-#     l_0 = (N*2) / n_b#.01 # length_kuhn = (10 l_k) = (20 l_p) = (200 l_0) ### length_kuhn = (1 l_k) = (2 l_p) = (200 l_0) #
-    l_p = 1
-#     length_kuhn = n_b * l_0 / (l_p*2)
-#     kappa = l_p/l_0
-    #all_snaps_vect_copoly = np.zeros(num_snapshots, dtype=object)
-
-    n_b = int( (N*2)/DEL ) #N in kuhn lenghts, DEL in persistence lengths
+    #l_p = 1    ### no persistence length is explicitly defined?? ###
+    n_b = int( (N*2)/DEL ) #N in kuhn lenghts, DEL in persistence lengths; l_k = 2*l_p
     
     if (n_b == 0):
         raise Exception("DEL too big for N")
@@ -124,7 +117,6 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
     axes_1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     origin_1 = np.array([0, 0, 0])
 
-#     for snap in range(num_snapshots):
     r_output = np.zeros([n_p*n_b, 3])
     u_output = np.zeros([n_p*n_b, 3])
     r1 = np.array([0, 0, 0])
@@ -134,10 +126,9 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
     phi = 2*np.pi*np.random.rand(n_p)
     theta = np.arccos(stats.uniform(-1, 2).rvs(n_p))
     u2 = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)]).T
-    r2 = u2 * DEL#* l_0
+    r2 = u2 * DEL
     r_output[1::n_b] = r2
     u_output[1::n_b] = u2
-    #for poly in range(n_p):
     for bead in range(n_b-2):
         phi = 2*np.pi*np.random.rand(n_p)
 
@@ -153,7 +144,7 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         r_perp = np.random.normal(0, (A_eff + EPS_PERP/DEL)**-0.5, n_p)
 
         # combine to find next r
-        r_prime = DEL*np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T  ######## SHOULDNT MULTPLY L0????? #############
+        r_prime = DEL*np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T
 
         # pull u_i+1
         #v = np.array([np.zeros(n_p), B*r_perp, -V0*np.ones(n_p)])# + -V0*np.array([0, 0, 1])
@@ -161,14 +152,46 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         r = np.random.rand(n_p)
         rho = (1 / v_mag) * np.log(np.exp(-v_mag)+r*(np.exp(v_mag)-np.exp(-v_mag)))
         theta_1 = np.arccos(rho) #angle between ui+1 and v
-        #theta_2 = np.arccos(np.dot(v, np.array([0,0,1]))/v_mag) #angle between v and ui
-        theta_2 = np.arccos((EPS_B/DEL)/v_mag)
-        theta = theta_1+theta_2
+#         print("theta_1: ", theta_1)
+        #theta_2 = np.arccos(np.dot(v, np.array([0,0,1]))/v_mag) 
+        theta_2 = np.arccos((EPS_B/DEL)/v_mag) #angle between v and ui   CAN IGNORE like we did in that derivation??
+        #print("theta_2: ", theta_2)
+        theta = theta_2*0.5 + theta_1  ##### WORKS THE BEST #####
+#         theta = theta_1  
+        
+#         # need to determine relative angles
+#         theta_big = theta_1 + theta_2
+#         r_perp_normed = (DEL*r_perp)/(((DEL*r_perp)**2 + (DEL*r_par)**2)**0.5)
+# #         print("theta big"theta small error: ", theta_small_error: ", theta_big)
+#         theta_big_error = np.abs(np.sin(theta_big) - np.abs(r_perp_normed))
+#         theta_small = np.abs(theta_2 - theta_1)
+        
+#         #print("theta small: ", theta_small)
+#         theta_small_error = np.abs(np.sin(theta_small) - np.abs(r_perp_normed))
+#         theta = np.zeros([n_p])
+#         print("r perp: ", r_perp)
+#         print('r perp normed', r_perp_normed)
+#         print("sin(theta 1): ", np.sin(theta_1))
+#         print("sin(theta 2): ", np.sin(theta_2))
+#         print("sin(theta big): ", np.sin(theta_big))
+#         print("sin(theta small): ", np.sin(theta_small))
+#         for i in range(n_p):
+#             theta_bg_er = theta_big_error[i]
+#             theta_sml_er = theta_small_error[i]
+#             if (theta_bg_er > theta_sml_er):
+#                 theta[i] = theta_small[i]
+#             else:
+#                 theta[i] = theta_big[i]
+                
         u_prime = (np.array([np.sin(theta)*np.cos(phi), 0+np.sin(theta)*np.sin(phi), np.cos(theta)])).T
 
         # convert all from "ui frame of ref" to global frame of ref
         z_prime = u_output[bead+1::n_b]
-        #z_prime = z_prime/np.linalg.norm(z_prime, axis = -1)[:, np.newaxis] to normalize- SHOULDNT NEED
+#         z_prime = r_output[bead+1::n_b] - r_output[bead::n_b]
+#         print("prev bond from rout: ", r_output[bead+1::n_b] - r_output[bead::n_b])
+#         print("uout: ", u_output[bead+1::n_b])
+#         z_prime = z_prime/np.linalg.norm(z_prime, axis = -1)[:, np.newaxis] #to normalize- SHOULDNT NEED if using u
+#         print("prev bond ppost normed: ", z_prime)
         x_prime = np.random.randn(n_p, 3)
         x_prime -= np.sum(x_prime*z_prime, axis=1)[:, None] * z_prime #np.sum is row-wise dot product
         x_prime = x_prime/np.linalg.norm(x_prime, axis = -1)[:, np.newaxis]
@@ -190,7 +213,6 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
     bead_identity = np.array([[i] for i in bead_identity])
 
     r_output = np.append(r_output, bead_identity, axis=1)
-    #all_snaps_vect_copoly[snap] = r_output
     return r_output
 
 def spin(n_p, n_b, all_snaps_vect_copoly, N, FA):
