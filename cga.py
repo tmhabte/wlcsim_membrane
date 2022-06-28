@@ -100,7 +100,7 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
     if (num_snapshots != 1):
         raise Exception("only one shapshot- increase n_p")
         
-    #l_p = 1    ### no persistence length is explicitly defined?? ###
+    l_p = 1    ### no persistence length is explicitly defined?? ###
     n_b = int( (N*2)/DEL ) #N in kuhn lenghts, DEL in persistence lengths; l_k = 2*l_p
     
     if (n_b == 0):
@@ -144,49 +144,34 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         r_perp = np.random.normal(0, (A_eff + EPS_PERP/DEL)**-0.5, n_p)
 
         # combine to find next r
-        r_prime = DEL*np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T
+        r_prime = DEL * np.array([r_perp*np.cos(phi), r_perp*np.sin(phi), r_par]).T  #
 
         # pull u_i+1
-        #v = np.array([np.zeros(n_p), B*r_perp, -V0*np.ones(n_p)])# + -V0*np.array([0, 0, 1])
         v_mag = np.sqrt(B**2 * r_perp**2 + V0**2)
+#         print("B: ", B)
+#         print("r_perp: ", r_perp)
+#         print("V0: ", V0)
+#         print("-------")
+#         print("v: ", v)
+#         print("prev u: ", u_output[bead+1::n_b])
+#         print("old v_mag", v_mag)
+#         print("new v_mag", np.linalg.norm(v_nonnormed, axis = -1)[:, np.newaxis])
         r = np.random.rand(n_p)
         rho = (1 / v_mag) * np.log(np.exp(-v_mag)+r*(np.exp(v_mag)-np.exp(-v_mag)))
         theta_1 = np.arccos(rho) #angle between ui+1 and v
-#         print("theta_1: ", theta_1)
+
         #theta_2 = np.arccos(np.dot(v, np.array([0,0,1]))/v_mag) 
-        theta_2 = np.arccos((EPS_B/DEL)/v_mag) #angle between v and ui   CAN IGNORE like we did in that derivation??
-        #print("theta_2: ", theta_2)
-        theta = theta_2*0.5 + theta_1  ##### WORKS THE BEST #####
-#         theta = theta_1  
-        
-#         # need to determine relative angles
-#         theta_big = theta_1 + theta_2
-#         r_perp_normed = (DEL*r_perp)/(((DEL*r_perp)**2 + (DEL*r_par)**2)**0.5)
-# #         print("theta big"theta small error: ", theta_small_error: ", theta_big)
-#         theta_big_error = np.abs(np.sin(theta_big) - np.abs(r_perp_normed))
-#         theta_small = np.abs(theta_2 - theta_1)
-        
-#         #print("theta small: ", theta_small)
-#         theta_small_error = np.abs(np.sin(theta_small) - np.abs(r_perp_normed))
-#         theta = np.zeros([n_p])
-#         print("r perp: ", r_perp)
-#         print('r perp normed', r_perp_normed)
-#         print("sin(theta 1): ", np.sin(theta_1))
-#         print("sin(theta 2): ", np.sin(theta_2))
-#         print("sin(theta big): ", np.sin(theta_big))
-#         print("sin(theta small): ", np.sin(theta_small))
-#         for i in range(n_p):
-#             theta_bg_er = theta_big_error[i]
-#             theta_sml_er = theta_small_error[i]
-#             if (theta_bg_er > theta_sml_er):
-#                 theta[i] = theta_small[i]
-#             else:
-#                 theta[i] = theta_big[i]
+#         theta_2 = np.arccos((EPS_B/DEL)/v_mag) #angle between v and ui   CAN IGNORE like we did in that derivation??
+
+#         theta = theta_2*0.5 + theta_1  ##### WORKS THE BEST for sf2 #####
+        theta = theta_1   
                 
         u_prime = (np.array([np.sin(theta)*np.cos(phi), 0+np.sin(theta)*np.sin(phi), np.cos(theta)])).T
-
+#         u_prime = (np.array([np.sin(theta), np.zeros(n_p), np.cos(theta)])).T
+        
         # convert all from "ui frame of ref" to global frame of ref
         z_prime = u_output[bead+1::n_b]
+
 #         z_prime = r_output[bead+1::n_b] - r_output[bead::n_b]
 #         print("prev bond from rout: ", r_output[bead+1::n_b] - r_output[bead::n_b])
 #         print("uout: ", u_output[bead+1::n_b])
@@ -197,13 +182,31 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         x_prime = x_prime/np.linalg.norm(x_prime, axis = -1)[:, np.newaxis]
 
         y_prime = np.cross(z_prime, x_prime)
-
+        
+        
         origin_2 = r_output[bead+1::n_b]
         axes_2 = np.stack((x_prime, y_prime, z_prime), axis=-1) #axis = -1 transposes
+        
+        ######################################################
+        v_nonnormed = np.array([B*r_perp, np.zeros(n_p) , V0*np.ones(n_p)]).T # 
+        v = v_nonnormed / np.linalg.norm(v_nonnormed, axis = -1)[:, np.newaxis]
+        v_global = np.einsum('ipq,iq->ip',axes_2,v) # define v in global frame of reference
+        z_prime_orientation = v_global ##### NEW #####
+        x_prime_ornt = np.random.randn(n_p, 3)
+        x_prime_ornt -= np.sum(x_prime_ornt*z_prime_orientation, axis=1)[:, None] * z_prime_orientation #np.sum is row-wise dot product
+        x_prime_ornt = x_prime_ornt/np.linalg.norm(x_prime_ornt, axis = -1)[:, np.newaxis]
+
+        y_prime_ornt = np.cross(z_prime_orientation, x_prime_ornt)
+        axes_2_orientation = np.stack((x_prime_ornt, y_prime_ornt, z_prime_orientation), axis=-1) ##### NEW #####
+
+        ######################################################
+
+        
         r_bead = origin_2 + np.einsum('ipq,iq->ip',axes_2,r_prime) #element-wise dot product
-        u_bead = np.einsum('ipq,iq->ip',axes_2,u_prime)
+        u_bead = np.einsum('ipq,iq->ip',axes_2_orientation,u_prime) ##### NEW #####
         r_output[bead+2::n_b] = r_bead
         u_output[bead+2::n_b] = u_bead
+        
 
     ## gen bead identities
     bead_identity = np.zeros(n_p*n_b)
@@ -826,7 +829,7 @@ def get_sf2_vect_old(n_p, n_b, all_snaps_vect_copoly, k_vec, FA, N):
     s2_sim_test = np.array([[s2_sim_AA_new, s2_sim_AB_new], [s2_sim_AB_new, s2_sim_BB_new]])
     return s2_sim_test * (N**2)
 
-def get_sf2(n_p, n_b, all_snaps_vect_copoly, k_vec):
+def get_sf2(n_p, n_b, all_snaps_vect_copoly, k_vec, N):
     
             
     num_snapshots = len(all_snaps_vect_copoly)
@@ -1038,3 +1041,29 @@ def assumeone_gam4(n_p, n_b, all_snaps_vect_copoly, N, Ks, FA):
         #print(val)
                 
     return val*(N**3)
+
+
+# TRASH CODE I MAY NEED
+#         # need to determine relative angles
+#         theta_big = theta_1 + theta_2
+#         r_perp_normed = (DEL*r_perp)/(((DEL*r_perp)**2 + (DEL*r_par)**2)**0.5)
+# #         print("theta big"theta small error: ", theta_small_error: ", theta_big)
+#         theta_big_error = np.abs(np.sin(theta_big) - np.abs(r_perp_normed))
+#         theta_small = np.abs(theta_2 - theta_1)
+        
+#         #print("theta small: ", theta_small)
+#         theta_small_error = np.abs(np.sin(theta_small) - np.abs(r_perp_normed))
+#         theta = np.zeros([n_p])
+#         print("r perp: ", r_perp)
+#         print('r perp normed', r_perp_normed)
+#         print("sin(theta 1): ", np.sin(theta_1))
+#         print("sin(theta 2): ", np.sin(theta_2))
+#         print("sin(theta big): ", np.sin(theta_big))
+#         print("sin(theta small): ", np.sin(theta_small))
+#         for i in range(n_p):
+#             theta_bg_er = theta_big_error[i]
+#             theta_sml_er = theta_small_error[i]
+#             if (theta_bg_er > theta_sml_er):
+#                 theta[i] = theta_small[i]
+#             else:
+#                 theta[i] = theta_big[i]
