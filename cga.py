@@ -113,7 +113,12 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
 #     EPS_PERP = EPS_PERP/(DEL*l_p**2)
 #     GAM = GAM*l_p*DEL
 #     ETA = ETA/l_p
-
+    
+    A = (EPS_B*ETA**2)/DEL
+    B = (EPS_B*ETA)/DEL
+    V0 = (EPS_B)/DEL
+    A_eff = ((EPS_B/DEL)-(1*EPS_B/DEL)*(1/np.tanh(EPS_B/DEL))+1)*ETA**2
+    
     axes_1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     origin_1 = np.array([0, 0, 0])
 
@@ -136,11 +141,6 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
         r_par = np.random.normal(GAM, (EPS_PAR/DEL)**-0.5, n_p)
 
         # pull r perp
-        A = (EPS_B*ETA**2)/DEL
-        B = (EPS_B*ETA)/DEL
-        V0 = (EPS_B)/DEL
-        #A_eff = A - (1*(B**2)*(1/np.tanh(V0)))/V0 + 1*(B**2)/(V0**2) 
-        A_eff = ((EPS_B/DEL)-(1*EPS_B/DEL)*(1/np.tanh(EPS_B/DEL))+1)*ETA**2
         r_perp = np.random.normal(0, (A_eff + EPS_PERP/DEL)**-0.5, n_p)
 
         # combine to find next r
@@ -148,71 +148,57 @@ def dsswlc_cga(N, n_p, n_b, f_a, num_snapshots, DEL):
 
         # pull u_i+1
         v_mag = np.sqrt(B**2 * r_perp**2 + V0**2)
-#         print("B: ", B)
-#         print("r_perp: ", r_perp)
-#         print("V0: ", V0)
-#         print("-------")
-#         print("v: ", v)
-#         print("prev u: ", u_output[bead+1::n_b])
-#         print("old v_mag", v_mag)
-#         print("new v_mag", np.linalg.norm(v_nonnormed, axis = -1)[:, np.newaxis])
         r = np.random.rand(n_p)
         rho = (1 / v_mag) * np.log(np.exp(-v_mag)+r*(np.exp(v_mag)-np.exp(-v_mag)))
-        theta_1 = np.arccos(rho) #angle between ui+1 and v
-
-        #theta_2 = np.arccos(np.dot(v, np.array([0,0,1]))/v_mag) 
-#         theta_2 = np.arccos((EPS_B/DEL)/v_mag) #angle between v and ui   CAN IGNORE like we did in that derivation??
-
-#         theta = theta_2*0.5 + theta_1  ##### WORKS THE BEST for sf2 #####
-        theta = theta_1   
+        theta = np.arccos(rho) #angle between ui+1 and v 
                 
-        u_prime = (np.array([np.sin(theta)*np.cos(phi), 0+np.sin(theta)*np.sin(phi), np.cos(theta)])).T
-#         u_prime = (np.array([np.sin(theta), np.zeros(n_p), np.cos(theta)])).T
+        u_ornt = (np.array([np.sin(theta)*np.cos(phi), 0+np.sin(theta)*np.sin(phi), np.cos(theta)])).T
         
-        # convert all from "ui frame of ref" to global frame of ref
+        # define axes_2, to convert from "ui" frame of ref to "global" frame of ref
         z_prime = u_output[bead+1::n_b]
-
 #         z_prime = r_output[bead+1::n_b] - r_output[bead::n_b]
-#         print("prev bond from rout: ", r_output[bead+1::n_b] - r_output[bead::n_b])
-#         print("uout: ", u_output[bead+1::n_b])
 #         z_prime = z_prime/np.linalg.norm(z_prime, axis = -1)[:, np.newaxis] #to normalize- SHOULDNT NEED if using u
-#         print("prev bond ppost normed: ", z_prime)
+
         x_prime = np.random.randn(n_p, 3)
         x_prime -= np.sum(x_prime*z_prime, axis=1)[:, None] * z_prime #np.sum is row-wise dot product
         x_prime = x_prime/np.linalg.norm(x_prime, axis = -1)[:, np.newaxis]
 
         y_prime = np.cross(z_prime, x_prime)
         
-        
         origin_2 = r_output[bead+1::n_b]
         axes_2 = np.stack((x_prime, y_prime, z_prime), axis=-1) #axis = -1 transposes
         
-        ######################################################
-        v_nonnormed = np.array([B*r_perp, np.zeros(n_p) , V0*np.ones(n_p)]).T # 
+        # define axes_2_orientation, to convert from "v" frame of ref to "global" frame of ref
+        v_nonnormed = np.array([B*r_perp, np.zeros(n_p) , V0*np.ones(n_p)]).T 
         v = v_nonnormed / np.linalg.norm(v_nonnormed, axis = -1)[:, np.newaxis]
         v_global = np.einsum('ipq,iq->ip',axes_2,v) # define v in global frame of reference
-        z_prime_orientation = v_global ##### NEW #####
+        z_prime_orientation = v_global 
         x_prime_ornt = np.random.randn(n_p, 3)
         x_prime_ornt -= np.sum(x_prime_ornt*z_prime_orientation, axis=1)[:, None] * z_prime_orientation #np.sum is row-wise dot product
         x_prime_ornt = x_prime_ornt/np.linalg.norm(x_prime_ornt, axis = -1)[:, np.newaxis]
 
         y_prime_ornt = np.cross(z_prime_orientation, x_prime_ornt)
-        axes_2_orientation = np.stack((x_prime_ornt, y_prime_ornt, z_prime_orientation), axis=-1) ##### NEW #####
-
-        ######################################################
-
+        axes_2_orientation = np.stack((x_prime_ornt, y_prime_ornt, z_prime_orientation), axis=-1) 
         
         r_bead = origin_2 + np.einsum('ipq,iq->ip',axes_2,r_prime) #element-wise dot product
-        u_bead = np.einsum('ipq,iq->ip',axes_2_orientation,u_prime) ##### NEW #####
+        u_bead = np.einsum('ipq,iq->ip',axes_2_orientation,u_ornt)
         r_output[bead+2::n_b] = r_bead
         u_output[bead+2::n_b] = u_bead
         
 
-    ## gen bead identities
+    # gen bead identities
     bead_identity = np.zeros(n_p*n_b)
     for i in range(n_p):
-        bead_identity[i*n_b:int(i*n_b + n_b*f_a)] = np.ones(int(n_b*f_a))
-    ##
+#         #AB diblock
+#         bead_identity[i*n_b:int(i*n_b + n_b*f_a)] = np.ones(int(n_b*f_a))
+        
+        #ABA triblock
+        if (int(n_b*f_a*0.5) != n_b*f_a*0.5):
+            raise Exception("invalid f_a or n_b- not whole beads")
+
+        bead_identity[i*n_b:int(i*n_b + n_b*f_a*0.5)] = np.ones(int(n_b*f_a*0.5))
+        bead_identity[int(i*n_b + n_b - n_b*f_a*0.5):int(i*n_b + n_b)] = np.ones(int(n_b*f_a*0.5))
+
     bead_identity = np.array([[i] for i in bead_identity])
 
     r_output = np.append(r_output, bead_identity, axis=1)
