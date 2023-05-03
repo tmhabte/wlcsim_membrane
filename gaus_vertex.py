@@ -952,9 +952,9 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
         elif minF == bccF:
             phase_name = "bcc"
         elif minF == sq_cylF:
-            phase_name = "sq_cyl"
+            phase_name = "sqcyl"
         elif minF == sim_cubF:
-            phase_name = "sim_cub"
+            phase_name = "simcub"
         elif minF == fccF:
             phase_name = "fcc"
         else:
