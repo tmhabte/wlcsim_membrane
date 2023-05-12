@@ -54,9 +54,11 @@ def calc_sf2(poly_mat, dens, N_m=1, b=1, k_vec = np.logspace(-2, 2, 50)):
     
     S2_AA_arr = np.zeros(nk)
     S2_AB_arr = np.zeros(nk)
+    S2_BA_arr = np.zeros(nk)
     S2_BB_arr = np.zeros(nk)
     
-    M2_AB = M2_AA[j2, j2] - M2_AA
+    M2_AB = M2_AA[j1, j1] - M2_AA
+    M2_BA = M2_AA[j2, j2] - M2_AA
     M2_BB = 1 - M2_AA[j1, j1] - M2_AA[j2, j2] + M2_AA[j1, j2]
     
     for i, k in enumerate(k_vec):
@@ -89,29 +91,32 @@ def calc_sf2(poly_mat, dens, N_m=1, b=1, k_vec = np.logspace(-2, 2, 50)):
 #         print(C/M**2)
         S2_AA_arr[i] = np.sum((1/M**2) * C * M2_AA)
         S2_AB_arr[i] = np.sum((1/M**2) * C * M2_AB)
+        S2_BA_arr[i] = np.sum((1/M**2) * C * M2_BA)
         S2_BB_arr[i] = np.sum((1/M**2) * C * M2_BB)
-    return S2_AA_arr*N**2, S2_AB_arr*N**2, S2_BB_arr*N**2
+    return S2_AA_arr*N**2, S2_AB_arr*N**2, S2_BA_arr*N**2, S2_BB_arr*N**2
 
 def calc_sf2_inv(poly_mat, dens, N_m, b, M, k_vec = np.logspace(-2, 2, 50)):
     if np.linalg.norm(k_vec[0]) < 1e-5:
         s2 = np.ones((2,2),dtype='complex')
         N = N_m * M
         return s2/N**2 # s2[0][0]/(N**2), s2[0][1]/(N**2), s2[1][1]/(N**2)
-    (S2_AA_arr, S2_AB_arr, S2_BB_arr) = calc_sf2(poly_mat, dens, N_m, b, k_vec)
-    det = S2_AA_arr * S2_BB_arr - S2_AB_arr**2
+    (S2_AA_arr, S2_AB_arr, S2_BA_arr, S2_BB_arr) = calc_sf2(poly_mat, dens, N_m, b, k_vec)
+    det = S2_AA_arr * S2_BB_arr - (S2_AB_arr*S2_BA_arr)
     S2_AA_inv = S2_BB_arr * (1/det)
     S2_AB_inv = -S2_AB_arr * (1/det)
+    S2_BA_inv = -S2_BA_arr * (1/det)
     S2_BB_inv = S2_AA_arr * (1/det)
     
     s2inv = np.zeros((2,2))
     s2inv[0][0] = S2_AA_inv[0]
-    s2inv[0][1] = s2inv[1][0] = S2_AB_inv[0]
+    s2inv[0][1] = S2_AB_inv[0]
+    s2inv[1][0] = S2_BA_inv[0]
     s2inv[1][1] = S2_BB_inv[0]
     return s2inv#(S2_AA_inv, S2_AB_inv, S2_BB_inv)
 
 def find_kstar(poly_mat, dens, N_m, b, M, k_vec = np.logspace(-2, 2, 50)):
-    (S2_AA_inv, S2_AB_inv, S2_BB_inv) = calc_sf2_inv(poly_mat, dens, N_m, b, M, k_vec)
-    G2 = 0.5*(S2_AA_inv - 2* S2_AB_inv + S2_BB_inv) # chi = 0
+    (S2_AA_arr, S2_AB_arr, S2_BA_arr, S2_BB_arr)= calc_sf2_inv(poly_mat, dens, N_m, b, M, k_vec)
+    G2 = 0.5*(S2_AA_inv - S2_AB_inv - S2_BA_inv + S2_BB_inv) # chi = 0
 
     # eigvalues,eigvectors = np.linalg.eigh(G2)
     eigvalues_lst = G2
@@ -192,8 +197,8 @@ def calc_sf3(poly_mat, dens, N_m, b, k_vec, k_vec_2, plotting = False):
     M3_BBA = M3_AAA + M3_BAA[j1, j3, j3] - M3_AAA[j2,j2,j3]
     M3_BBB = 1  - M3_AAA[j1, j1, j1] - M3_BAA[j1, j2, j2] - M3_BAA[j1, j3, j3] + M3_AAA[j2,j2,j3] - M3_AAA
     
-#     M3_ABA = M3_AAA[j1,j1,j3] - M3_AAA
-#     M3_BAB = M3_AAA[j2,j2,j2] - M3_AAA[j2,j2,j3] - M3_AAA[j1,j2,j2] + M3_AAA
+    M3_ABA = M3_AAA[j1,j1,j3] - M3_AAA
+    M3_BAB = M3_AAA[j2,j2,j2] - M3_AAA[j2,j2,j3] - M3_AAA[j1,j2,j2] + M3_AAA
     M3_AAB = M3_AAA[j1, j1, j2] - M3_AAA
     M3_ABB = M3_AAA[j1,j1,j1] - M3_AAA[j1,j1,j2] - M3_AAA[j1,j1,j3] + M3_AAA
     
@@ -233,17 +238,19 @@ def calc_sf3(poly_mat, dens, N_m, b, k_vec, k_vec_2, plotting = False):
         S3_BBA_arr[i] += np.sum((1/M**3) * M3_BBA * C)*(N**3)
         S3_BBB_arr[i] += np.sum((1/M**3) * M3_BBB * C)*(N**3)
         
-#         S3_ABA_arr[i] += np.sum((1/M**3) * M3_ABA * C)*(N**3)
-#         S3_BAB_arr[i] += np.sum((1/M**3) * M3_BAB * C)*(N**3)
+        S3_ABA_arr[i] += np.sum((1/M**3) * M3_ABA * C)*(N**3)
+        S3_BAB_arr[i] += np.sum((1/M**3) * M3_BAB * C)*(N**3)
         
         S3_AAB_arr[i] += np.sum((1/M**3) * M3_AAB * C)*(N**3)
         S3_ABB_arr[i] += np.sum((1/M**3) * M3_ABB * C)*(N**3)
         
     s3 = np.zeros((2,2,2)) 
     s3[0][0][0] = S3_AAA_arr[0]
-    s3[1][0][0] = s3[0][1][0] = S3_BAA_arr[0]
+    s3[1][0][0] = S3_BAA_arr[0]
+    s3[0][1][0] = S3_ABA_arr[0]
     s3[0][0][1] = S3_AAB_arr[0]
-    s3[0][1][1] = s3[1][0][1] = S3_ABB_arr[0]
+    s3[0][1][1] = S3_ABB_arr[0]
+    s3[1][0][1] = S3_BAB_arr[0]
     s3[1][1][0] = S3_BBA_arr[0]
     s3[1][1][1] = S3_BBB_arr[0]
     
@@ -397,16 +404,26 @@ def calc_sf4(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
     j4 = grid[3]
     
     S4_AAAA_arr = np.zeros(nk)
+    
+    S4_BAAA_arr = np.zeros(nk)
+    S4_ABAA_arr = np.zeros(nk)
+    S4_AABA_arr = np.zeros(nk)
     S4_AAAB_arr = np.zeros(nk)
+    
     S4_AABB_arr = np.zeros(nk)
+    S4_BBAA_arr = np.zeros(nk)
+    S4_ABBA_arr = np.zeros(nk)
+    S4_BAAB_arr = np.zeros(nk)
+    S4_ABAB_arr = np.zeros(nk)
+    S4_BABA_arr = np.zeros(nk)
+
     S4_ABBB_arr = np.zeros(nk)
+    S4_BABB_arr = np.zeros(nk)
+    S4_BBAB_arr = np.zeros(nk)
+    S4_BBBA_arr = np.zeros(nk)
+    
     S4_BBBB_arr = np.zeros(nk)
     
-    S4_ABAB_arr = np.zeros(nk)
-    S4_ABBA_arr = np.zeros(nk)
-    S4_BBBA_arr = np.zeros(nk)
-    S4_BBAB_arr = np.zeros(nk)
-    S4_BABB_arr = np.zeros(nk)
     
     M4_BAAA = M4_AAAA[j2, j2, j3, j4] - M4_AAAA
     M4_BBAA = M4_BAAA[j1, j3, j3, j4] - M4_BAAA
@@ -419,6 +436,13 @@ def calc_sf4(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
     M4_BBAB = M4_ABBA[j3, j2, j4, j3] - M4_ABBA[j1, j2, j4, j3]
     M4_BABB = M4_ABBA[j2, j4, j3, j2] - M4_ABBA[j1, j4, j3, j2]
     M4_ABBB = M4_ABBA[j1, j2, j3, j1] - M4_ABBA[j4, j2, j3, j1]
+    
+    M4_AAAB = M4_AAAA[j1, j2, j3, j3] - M4_AAAA
+    M4_AABA = M4_AAAA[j1, j2, j2, j4] - M4_AAAA
+    M4_ABAA = M4_AAAA[j1, j1, j3, j4] - M4_AAAA
+    M4_AABB = M4_AABA[j1, j2, j3, j1] - M4_AABA
+    M4_BAAB = M4_BAAA[j1, j2, j3, j3] - M4_BAAA
+    M4_BABA = M4_BAAA[j1, j2, j2 ,j4] - M4_BAAA
     
     for i, k1 in enumerate(k_vec):
         k2 = k_vec_2[i]
@@ -462,24 +486,40 @@ def calc_sf4(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
             C = calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js)
             
         S4_AAAA_arr[i] += np.sum((1/M**4) * M4_AAAA * C)*(N**4)
-        S4_AAAB_arr[i] += np.sum((1/M**4) * M4_BAAA * C)*(N**4)
-        S4_AABB_arr[i] += np.sum((1/M**4) * M4_BBAA * C)*(N**4)
-        S4_ABBB_arr[i] += np.sum((1/M**4) * M4_BBBA * C)*(N**4)
+        
+        S4_BAAA_arr[i] += np.sum((1/M**4) * M4_BAAA * C)*(N**4)
+        S4_ABAA_arr[i] += np.sum((1/M**4) * M4_ABAA * C)*(N**4)
+        S4_AABA_arr[i] += np.sum((1/M**4) * M4_AABA * C)*(N**4)
+        S4_AAAB_arr[i] += np.sum((1/M**4) * M4_AAAB * C)*(N**4)
+
+        S4_AABB_arr[i] += np.sum((1/M**4) * M4_AABB * C)*(N**4)        
+        S4_BBAA_arr[i] += np.sum((1/M**4) * M4_BBAA * C)*(N**4)
+        S4_ABBA_arr[i] += np.sum((1/M**4) * M4_ABBA * C)*(N**4)
+        S4_BAAB_arr[i] += np.sum((1/M**4) * M4_BAAB * C)*(N**4)
+        S4_ABAB_arr[i] += np.sum((1/M**4) * M4_ABAB * C)*(N**4)
+        S4_BABA_arr[i] += np.sum((1/M**4) * M4_BABA * C)*(N**4)
+
+        S4_ABBB_arr[i] += np.sum((1/M**4) * M4_ABBB * C)*(N**4)
+        S4_BABB_arr[i] += np.sum((1/M**4) * M4_BABB * C)*(N**4)
+        S4_BBAB_arr[i] += np.sum((1/M**4) * M4_BBAB * C)*(N**4)
+        S4_BBBA_arr[i] += np.sum((1/M**4) * M4_BBBA * C)*(N**4)
+
         S4_BBBB_arr[i] += np.sum((1/M**4) * M4_BBBB * C)*(N**4)
         
-        S4_ABAB_arr[i] += np.sum((1/M**4) * M4_ABAB * C)*(N**4)
-        S4_ABBA_arr[i] += np.sum((1/M**4) * M4_ABBA * C)*(N**4)
-        S4_BBBA_arr[i] += np.sum((1/M**4) * M4_BBBA * C)*(N**4)
-        S4_BBAB_arr[i] += np.sum((1/M**4) * M4_BBAB * C)*(N**4)
-        S4_BABB_arr[i] += np.sum((1/M**4) * M4_BABB * C)*(N**4)
-
+        
     s4 = np.zeros((2, 2, 2, 2))
     
     s4[0][0][0][0] = S4_AAAA_arr[0]
-    s4[0][0][0][1] = s4[0][0][1][0] = s4[0][1][0][0] = s4[1][0][0][0] = S4_AAAB_arr[0]
-    s4[0][0][1][1] = s4[1][1][0][0] = S4_AABB_arr[0]
-    s4[1][0][0][1] = s4[0][1][1][0] = S4_ABBA_arr[0]
-    s4[1][0][1][0] = s4[0][1][0][1] = S4_ABAB_arr[0]
+    s4[0][0][0][1] = S4_AAAB_arr[0]
+    s4[0][0][1][0] = S4_AABA_arr[0]
+    s4[0][1][0][0] = S4_ABAA_arr[0]
+    s4[1][0][0][0] = S4_BAAA_arr[0]
+    s4[0][0][1][1] = S4_AABB_arr[0]
+    s4[1][1][0][0] = S4_BBAA_arr[0]
+    s4[1][0][0][1] = S4_BAAB_arr[0]
+    s4[0][1][1][0] = S4_ABBA_arr[0]
+    s4[1][0][1][0] = S4_BABA_arr[0]
+    s4[0][1][0][1] = S4_ABAB_arr[0]
     s4[1][1][1][0] = S4_BBBA_arr[0]
     s4[1][1][0][1] = S4_BBAB_arr[0]
     s4[1][0][1][1] = S4_BABB_arr[0]
@@ -487,9 +527,117 @@ def calc_sf4(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
     s4[1][1][1][1] = S4_BBBB_arr[0]
     
     if plotting: # matrix only contains single value, for calculating gamma functions
-        return S4_AAAA_arr, S4_AAAB_arr, S4_AABB_arr, S4_ABAB_arr, S4_ABBA_arr, S4_ABBB_arr, S4_BABB_arr, S4_BBAB_arr, S4_BBBA_arr, S4_BBBB_arr 
+        raise Exception("need to fix return value")
+        return S4_AAAA_arr, S4_AAAB_arr, S4_AABA_arr, S4_ABAA_arr, S4_BAAA_arr, S4_AABB_arr, S4_BBAA_arr, S4_ABAB_arr, S4_BABA_arr, S4_ABBA_arr, S4_ABBB_arr, S4_BABB_arr, S4_BBAB_arr, S4_BBBA_arr, S4_BBBB_arr 
     
     return s4 
+
+# def calc_sf4_OLD_allqssamemag(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
+#     M4_AAAA = calc_monomer_matrix_4(poly_mat, dens)
+#     M = np.shape(M4_AAAA)[0]
+#     nk = len(k_vec)
+#     N = M*N_m
+
+#     grid = np.indices((M,M,M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+#     j3 = grid[2]
+#     j4 = grid[3]
+    
+#     S4_AAAA_arr = np.zeros(nk)
+#     S4_AAAB_arr = np.zeros(nk)
+#     S4_AABB_arr = np.zeros(nk)
+#     S4_ABBB_arr = np.zeros(nk)
+#     S4_BBBB_arr = np.zeros(nk)
+    
+#     S4_ABAB_arr = np.zeros(nk)
+#     S4_ABBA_arr = np.zeros(nk)
+#     S4_BBBA_arr = np.zeros(nk)
+#     S4_BBAB_arr = np.zeros(nk)
+#     S4_BABB_arr = np.zeros(nk)
+    
+#     M4_BAAA = M4_AAAA[j2, j2, j3, j4] - M4_AAAA
+#     M4_BBAA = M4_BAAA[j1, j3, j3, j4] - M4_BAAA
+#     M4_BBBA = M4_BBAA[j1, j2, j4, j4] - M4_BBAA
+#     M4_BBBB = 1 - M4_AAAA[j1, j1, j1, j1] - M4_AAAA[j2, j2, j2, j2] - M4_AAAA[j3, j3, j3, j3]  + M4_AAAA[j1, j1, j3, j3]\
+#     + M4_AAAA[j2, j2, j3, j3] + M4_AAAA[j1, j1, j2, j2] - M4_AAAA[j1, j2, j3, j3] - M4_BBBA
+
+#     M4_ABAB = M4_AAAA[j1, j1, j3, j3] - M4_AAAA[j1, j1, j3, j4] - M4_AAAA[j1, j1, j2, j3] + M4_AAAA
+#     M4_ABBA = M4_AAAA[j1,j1,j4,j4] - M4_AAAA[j1, j1, j4, j3] - M4_AAAA[j1, j1, j2, j4] + M4_AAAA[j1, j2, j4, j3]
+#     M4_BBAB = M4_ABBA[j3, j2, j4, j3] - M4_ABBA[j1, j2, j4, j3]
+#     M4_BABB = M4_ABBA[j2, j4, j3, j2] - M4_ABBA[j1, j4, j3, j2]
+#     M4_ABBB = M4_ABBA[j1, j2, j3, j1] - M4_ABBA[j4, j2, j3, j1]
+    
+#     for i, k1 in enumerate(k_vec):
+#         k2 = k_vec_2[i]
+#         k3 = k_vec_3[i]
+#         k12 = k1 + k2
+#         k13 = k1 + k3
+#         k23 = k2 + k3
+#         k123 = k1 + k2 + k3
+        
+#         # CASE 1; kA = k1 + k2 + k3; kB = k_1 + k_2; kC = k_1  S4 > S3 > S2 > S1 (and reverse). All cases on wlcstat
+#         case1 = [[k123, k12, k1], [j4, j3, j2, j1]]
+#         case2 = [[k123, k12, k2], [j4, j3, j1, j2]]
+#         case3 = [[k123, k13, k1], [j4, j2, j3, j1]]
+#         case4 = [[k123, k23, k2], [j4, j1, j3, j2]]
+#         case5 = [[k123, k13, k3], [j4, j2, j1, j3]]
+#         case6 = [[k123, k23, k3], [j4, j1, j2, j3]]
+#         case7 = [[-k3, k12, k1], [j3, j4, j2, j1]]
+#         case8 = [[-k3, k12, k2], [j3, j4, j1, j2]]
+#         case9 = [[-k2, k13, k1], [j2, j4, j3, j1]]
+#         case10 = [[-k1, k23, k2], [j1, j4, j3, j2]]
+#         case11 = [[-k2, k13, k3], [j2, j4, j1, j3]]
+#         case12 = [[-k1, k23, k3], [j1, j4, j2, j3]]
+        
+#         case_arr = [case1, case2, case3, case4, case5, case6, \
+#                    case7, case8, case9, case10, case11, case12]
+        
+#         # need to consider degenerate cases. flipping each element in array, then appending to original case array
+#         case_arr = np.vstack((case_arr, [[np.flipud(el) for el in cse] for cse in case_arr]))
+        
+# #        for each case and sub case, add to a matrix C(j1, j2, j3, j4) which contains the contribution to the overall S4
+# #        then sum over all indices. Need to keep track of js so that aproiate multiplications with cross corr matrix M4 
+#         C = np.zeros((M,M,M,M))
+#         for cse in case_arr:
+#             kA, kB, kC = cse[0]
+#             ordered_js = cse[1]
+            
+#             xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
+#             xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
+#             xm_C = (1/6) * N_m * b**2 * np.linalg.norm(kC)**2
+            
+#             C = calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js)
+            
+#         S4_AAAA_arr[i] += np.sum((1/M**4) * M4_AAAA * C)*(N**4)
+#         S4_AAAB_arr[i] += np.sum((1/M**4) * M4_BAAA * C)*(N**4)
+#         S4_AABB_arr[i] += np.sum((1/M**4) * M4_BBAA * C)*(N**4)
+#         S4_ABBB_arr[i] += np.sum((1/M**4) * M4_BBBA * C)*(N**4)
+#         S4_BBBB_arr[i] += np.sum((1/M**4) * M4_BBBB * C)*(N**4)
+        
+#         S4_ABAB_arr[i] += np.sum((1/M**4) * M4_ABAB * C)*(N**4)
+#         S4_ABBA_arr[i] += np.sum((1/M**4) * M4_ABBA * C)*(N**4)
+#         S4_BBBA_arr[i] += np.sum((1/M**4) * M4_BBBA * C)*(N**4)
+#         S4_BBAB_arr[i] += np.sum((1/M**4) * M4_BBAB * C)*(N**4)
+#         S4_BABB_arr[i] += np.sum((1/M**4) * M4_BABB * C)*(N**4)
+
+#     s4 = np.zeros((2, 2, 2, 2))
+    
+#     s4[0][0][0][0] = S4_AAAA_arr[0]
+#     s4[0][0][0][1] = s4[0][0][1][0] = s4[0][1][0][0] = s4[1][0][0][0] = S4_AAAB_arr[0]
+#     s4[0][0][1][1] = s4[1][1][0][0] = S4_AABB_arr[0]
+#     s4[1][0][0][1] = s4[0][1][1][0] = S4_ABBA_arr[0]
+#     s4[1][0][1][0] = s4[0][1][0][1] = S4_ABAB_arr[0]
+#     s4[1][1][1][0] = S4_BBBA_arr[0]
+#     s4[1][1][0][1] = S4_BBAB_arr[0]
+#     s4[1][0][1][1] = S4_BABB_arr[0]
+#     s4[0][1][1][1] = S4_ABBB_arr[0]
+#     s4[1][1][1][1] = S4_BBBB_arr[0]
+    
+#     if plotting: # matrix only contains single value, for calculating gamma functions
+#         return S4_AAAA_arr, S4_AAAB_arr, S4_AABB_arr, S4_ABAB_arr, S4_ABBA_arr, S4_ABBB_arr, S4_BABB_arr, S4_BBAB_arr, S4_BBBA_arr, S4_BBBB_arr 
+    
+#     return s4 
 
 def calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js):
 
@@ -639,7 +787,7 @@ def calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js):
         / (2*xm_A**4)
         
     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
-        integral = ((-1+np.ezp(xm_C))*( -xm_C + (   (xm_A*(-1+np.exp(-xm_C) + xm_C))  / (xm_C)  ) +  ( (xm_C-np.exp(-xm_A)*xm_C)  / (xm_A)  )     )) / (xm_A*(xm_A-xm_C)*xm_C**2)
+        integral = ((-1+np.exp(xm_C))*( -xm_C + (   (xm_A*(-1+np.exp(-xm_C) + xm_C))  / (xm_C)  ) +  ( (xm_C-np.exp(-xm_A)*xm_C)  / (xm_A)  )     )) / (xm_A*(xm_A-xm_C)*xm_C**2)
     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
         integral = (4-4*np.cosh(xm_A) + 2*xm_A*np.sinh(xm_A)) / (xm_A**4)
         
@@ -759,11 +907,11 @@ def gamma3_E(poly_mat, dens, N_m, b, M, Ks):
     K1, K2, K3 = Ks
     N = N_m * M
     if np.linalg.norm(K1+K2+K3) >= 1e-10:
-        raise('Qs must add up to zero')
+        raise Exception('Qs must add up to zero')
         
-    if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5 \
-        and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5):
-        raise('Qs must have same length')
+#     if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5 \
+#         and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5):
+#         raise Exception('Qs must have same length')
     
     s2inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K1])
     
@@ -779,20 +927,23 @@ def gamma3_E(poly_mat, dens, N_m, b, M, Ks):
 
 def gamma4_E(poly_mat, dens, N_m, b, M, Ks):
     K1, K2, K3, K4 = Ks
-    if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5
-            and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5
-            and abs(np.linalg.norm(K3)-np.linalg.norm(K4)) < 1e-5):
-        print(K1, K2, K3, K4)
-        raise('Qs must have same length')
+    if np.linalg.norm(K1+K2+K3+K4) >= 1e-10:
+        raise Exception('Qs must add up to zero')
+#     if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5
+#             and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5
+#             and abs(np.linalg.norm(K3)-np.linalg.norm(K4)) < 1e-5):
+#         print(K1, K2, K3, K4)
+#         raise Exception('Qs must have same length')
     
     N = M * N_m
-        
+#     print("shapoopy")
     K = np.linalg.norm(K1)
     K12 = np.linalg.norm(K1+K2)
     K13 = np.linalg.norm(K1+K3)
     K14 = np.linalg.norm(K1+K4)
 
     s4 = calc_sf4(poly_mat, dens, N_m, b, [K1], [K2], [K3]) 
+#     print("s4:", s4)
     s31 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K2])
     s32 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K3])
     s33 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K4])
@@ -826,9 +977,9 @@ def poly_mat_gen(poly_type, M, n_p = 1, FA = 0.5):
     if poly_type == "random":
         if FA != 0.5:
             raise Exception("for random, can only choose randomly (<fa> will be 0.5)")
-        n_mixs = 1
-        rand_polys = np.random.choice(2,(n_mixs, n_p, M))
-        rand_dens = np.random.dirichlet(np.ones(n_p),size=(1, n_mixs))[0]
+#         n_mixs = 1
+        rand_polys = np.random.choice(2,(n_p, M))
+        rand_dens = np.random.dirichlet(np.ones(n_p),size=(1))[0]
         return rand_polys, rand_dens
     elif poly_type == "diblock":
         if n_p != 1:
@@ -875,6 +1026,21 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
     bcc_q4 = 2**(-0.5)*q_star*np.array([0,1,-1])
     bcc_q5 = 2**(-0.5)*q_star*np.array([1,0,1])
     bcc_q6 = 2**(-0.5)*q_star*np.array([1,0,-1])
+    
+    sq_6 = (1/np.sqrt(6)) * q_star
+    gyr_q1 = sq_6*np.array([-1, 2, 1])
+    gyr_q2 = sq_6*np.array([2, 1, -1])
+    gyr_q3 = sq_6*np.array([1, -1, 2])
+    gyr_q4 = sq_6*np.array([2, -1, -1])
+    gyr_q5 = sq_6*np.array([-1, 2, -1])
+    gyr_q6 = sq_6*np.array([-1, -1, 2])
+    
+    gyr_q7 = sq_6*np.array([2, 1, 1])
+    gyr_q8 = sq_6*np.array([1, 2, 1])
+    gyr_q9 = sq_6*np.array([1, 1, 2])
+    gyr_q10 = sq_6*np.array([2, -1, 1])
+    gyr_q11 = sq_6*np.array([1, 2, -1])
+    gyr_q12 = sq_6*np.array([-1, 1, 2])
 
     sq_cyl_q1 = q_star * np.array([1,0,0])
     sq_cyl_q2 = q_star * np.array([0,1,0])
@@ -889,32 +1055,47 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
     fcc_q4 = 3**(-0.5)*q_star*np.array([-1,1,1])
     
     
+    G3 = gamma3_E(poly_mat, dens, N_m, b, M, cyl_qs) # all g3s are eqivlaent
     lam_g3 = 0
-    cyl_g3 = -(1/6) * (1/(3*np.sqrt(3))) * 12 * gamma3_E(poly_mat, dens, N_m, b, M, cyl_qs)
-    bcc_g3 = -(4/(3*np.sqrt(6))) * gamma3_E(poly_mat, dens, N_m, b, M, np.array([bcc_q6, bcc_q3, -bcc_q1]))
+    cyl_g3 = -(1/6) * (1/(3*np.sqrt(3))) * 12 * G3
+    bcc_g3 = -(4/(3*np.sqrt(6))) * G3 #* gamma3_E(poly_mat, dens, N_m, b, M, np.array([bcc_q6, bcc_q3, -bcc_q1]))
+    gyr_g3 = (1/6)  * (1/(12*np.sqrt(12))) * 48  * G3 #* gamma3_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q11, -gyr_q3]))
     sq_cyl_g3 = 0
     sim_cub_g3 = 0
     fcc_g3 = 0
     
-    lam_g4 = (1/24) * (6) * (1) * gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q, -lam_q]))
-    cyl_g4 = (1/12)* (gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1 , -cyl_q1 , cyl_q1 , -cyl_q1 ])) + \
+    G4_00 = gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q, -lam_q]))
+    lam_g4 = (1/24) * (6) * (1) * G4_00#gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q, -lam_q]))
+    cyl_g4 = (1/12)* (G4_00 + \
               4*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1, -cyl_q1, cyl_q2, -cyl_q2])))
-    bcc_g4 = (1/24)* (gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q1, bcc_q1, -bcc_q1])) \
+    bcc_g4 = (1/24)* (G4_00 \
                      + 8*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q1, bcc_q3, -bcc_q3])) \
                      + 2*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q1, bcc_q2, -bcc_q2])) \
                      + 4*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q3, bcc_q2, -bcc_q4])) )
-    sq_cyl_g4 = (1/24) * (1/4) * (12*gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1 , -sq_cyl_q1 , sq_cyl_q1 , -sq_cyl_q1 ])) + \
-                                  24*gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1 , -sq_cyl_q1 , sq_cyl_q2 , -sq_cyl_q2 ])))
-    sim_cub_g4 = (1/24) * (1/9) * (18*gamma4_E(poly_mat, dens, N_m, b, M, np.array([sim_cub_q1, -sim_cub_q1, sim_cub_q1, -sim_cub_q1]))+ \
-                                   72*gamma4_E(poly_mat, dens, N_m, b, M, np.array([sim_cub_q1, -sim_cub_q1, sim_cub_q2, -sim_cub_q2])))
-    fcc_g4 = (1/24) * (1/16) * (24*gamma4_E(poly_mat, dens, N_m, b, M, np.array([fcc_q1, -fcc_q1, fcc_q1, -fcc_q1]))\
+    gyr_g4 = (1/24)* (1/(12*12)) * (72*G4_00 + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q8, -gyr_q8])) + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q10, -gyr_q10])) + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q11, -gyr_q11])) + \
+                       144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q4, -gyr_q4])) + \
+                       576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q12, -gyr_q12])) + \
+                       -288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, gyr_q4, -gyr_q10, -gyr_q5])) + \
+                       144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q2, gyr_q4, -gyr_q10])) + \
+                       -288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q5, -gyr_q7, gyr_q2])))
+    
+    G4_90deg = gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1 , -sq_cyl_q1 , sq_cyl_q2 , -sq_cyl_q2 ]))
+    sq_cyl_g4 = (1/24) * (1/4) * (12*G4_00 + \
+                                  24*G4_90deg)
+    sim_cub_g4 = (1/24) * (1/9) * (18*G4_00+ \
+                                   72*G4_90deg)
+    fcc_g4 = (1/24) * (1/16) * (24*G4_00\
                                 + 144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([fcc_q1, -fcc_q1, fcc_q2, -fcc_q2]))\
-                                + 48*gamma4_E(poly_mat, dens, N_m, b, M, np.array([-fcc_q1, fcc_q2, fcc_q3, fcc_q4])))
+                                - 48*gamma4_E(poly_mat, dens, N_m, b, M, np.array([-fcc_q1, fcc_q2, fcc_q3, fcc_q4])))
     
     for CHI in chi_array:
         lam_g2 = (1/2) * 2 * (1) * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)                
         cyl_g2 = lam_g2#(1/2) * 6 * (1/3) * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)
         bcc_g2 = lam_g2#(1/2) * 12 * (1/6) * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)
+        gyr_g2 = lam_g2
         sq_cyl_g2 = lam_g2#(1/2) * (1/2) * 4 * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)
         sim_cub_g2 = lam_g2
         fcc_g2 = lam_g2
@@ -924,6 +1105,8 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
         amp_c1 = optimize.fmin(lambda amps: np.real(amps**2 * cyl_g2 + amps**3 * cyl_g3 + amps**4 * cyl_g4), \
                               1, disp=False)
         amp_bcc1 = optimize.fmin(lambda amps: np.real(amps**2 * bcc_g2 + amps**3 * bcc_g3 + amps**4 * bcc_g4), \
+                              1, disp=False)
+        amp_g1 = optimize.fmin(lambda amps: np.real(amps**2 * gyr_g2 + amps**3 * gyr_g3 + amps**4 * gyr_g4), \
                               1, disp=False)
         amp_sq_c1 = optimize.fmin(lambda amps: np.real(amps**2 * sq_cyl_g2 + amps**3 * sq_cyl_g3 + amps**4 * sq_cyl_g4), \
                               1, disp=False)
@@ -936,6 +1119,7 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
         lamF = amp_l1**2 * lam_g2 + amp_l1**3 * lam_g3 + amp_l1**4 * lam_g4 
         cylF = amp_c1**2 * cyl_g2 + amp_c1**3 * cyl_g3 + amp_c1**4 * cyl_g4 
         bccF = amp_bcc1**2 * bcc_g2 + amp_bcc1**3 * bcc_g3 + amp_bcc1**4 * bcc_g4
+        gyrF = amp_g1**2 * gyr_g2 + amp_g1**3 * gyr_g3 + amp_g1**4 * gyr_g4
         sq_cylF = amp_sq_c1**2 * sq_cyl_g2 + amp_sq_c1**3 * sq_cyl_g3 + amp_sq_c1**4 * sq_cyl_g4 
         sim_cubF = amp_sim_cub1**2 * sim_cub_g2 + amp_sim_cub1**3 * sim_cub_g3 + amp_sim_cub1**4 * sim_cub_g4 
         fccF = amp_fcc1**2 * fcc_g2 + amp_fcc1**3 * fcc_g3 + amp_fcc1**4 * fcc_g4
@@ -951,6 +1135,8 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
             phase_name = "cyl"
         elif minF == bccF:
             phase_name = "bcc"
+        elif minF == gyrF:
+            phase_name = "gyr"
         elif minF == sq_cylF:
             phase_name = "sqcyl"
         elif minF == sim_cubF:
