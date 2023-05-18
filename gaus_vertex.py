@@ -1480,8 +1480,6 @@ def find_phase_2wvmd(poly_mat, dens, N_m, b, M, chi_array):
         
 #         bccF = bcc.fun
 
-        point = np.array([FA, CHI*N])
-
         minF = min([lamF, cylF, gyrF, bccF, sq_cylF, sim_cubF, fccF])
 
         if minF > 0:
