@@ -1125,7 +1125,364 @@ def find_phase(poly_mat, dens, N_m, b, M, chi_array):
         fccF = amp_fcc1**2 * fcc_g2 + amp_fcc1**3 * fcc_g3 + amp_fcc1**4 * fcc_g4
         
         
-        minF = min([lamF, cylF, bccF, sq_cylF, sim_cubF, fccF])
+        minF = min([lamF, cylF, bccF, sq_cylF, gyrF, sim_cubF, fccF])
+
+        if minF > 0:
+            phase_name = "dis"
+        elif minF == lamF:
+            phase_name = "lam" 
+        elif minF == cylF:
+            phase_name = "cyl"
+        elif minF == bccF:
+            phase_name = "bcc"
+        elif minF == gyrF:
+            phase_name = "gyr"
+        elif minF == sq_cylF:
+            phase_name = "sqcyl"
+        elif minF == sim_cubF:
+            phase_name = "simcub"
+        elif minF == fccF:
+            phase_name = "fcc"
+        else:
+            raise Exception("error in min F phase assignment")
+        
+        res_arr = np.append(res_arr, [CHI, phase_name])
+    return res_arr
+
+def find_phase_2wvmd(poly_mat, dens, N_m, b, M, chi_array):
+    # returns an array of the phase identiifed (as a string) at each chi value in chi array
+    # for labeling dataset to then train mlp
+    res_arr = np.array([])
+    
+    q_star = spinodal_gaus(poly_mat, dens, N_m, b, M)
+    q_star = q_star[0]
+    
+    if q_star <= 0.01:
+        #only disorderd or macrophase separation possible
+        for CHI in chi_array:
+            G2 = gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI) 
+            if G2 < 0:
+                phase_name = "macro"
+            elif G2 >= 0:
+                phase_name = "dis"
+            res_arr = np.append(res_arr, [CHI, phase_name])
+        return res_arr
+    
+    lam_q = q_star*np.array([1, 0, 0])
+    
+    lam_q_2 = q_star*np.array([2, 0, 0])
+    
+    cyl_q1 = q_star*np.array([1, 0, 0])
+    cyl_q2 = 0.5*q_star*np.array([-1, np.sqrt(3), 0])
+    cyl_q3 = 0.5*q_star*np.array([-1, -np.sqrt(3), 0])
+    cyl_qs = np.array([cyl_q1, cyl_q2, cyl_q3])
+    
+    cyl_q1_2 = q_star*np.array([0, np.sqrt(3), 0])
+    cyl_q2_2 = 0.5*q_star*np.array([3, -np.sqrt(3), 0])
+    cyl_q3_2 = 0.5*q_star*np.array([-3, -np.sqrt(3), 0])
+    cyl_qs_2 = np.array([cyl_q1_2, cyl_q2_2, cyl_q3_2])
+    
+    sq_6 = (1/np.sqrt(6)) * q_star
+    gyr_q1 = sq_6*np.array([-1, 2, 1])
+    gyr_q2 = sq_6*np.array([2, 1, -1])
+    gyr_q3 = sq_6*np.array([1, -1, 2])
+    gyr_q4 = sq_6*np.array([2, -1, -1])
+    gyr_q5 = sq_6*np.array([-1, 2, -1])
+    gyr_q6 = sq_6*np.array([-1, -1, 2])
+    
+    gyr_q7 = sq_6*np.array([2, 1, 1])
+    gyr_q8 = sq_6*np.array([1, 2, 1])
+    gyr_q9 = sq_6*np.array([1, 1, 2])
+    gyr_q10 = sq_6*np.array([2, -1, 1])
+    gyr_q11 = sq_6*np.array([1, 2, -1])
+    gyr_q12 = sq_6*np.array([-1, 1, 2])
+    
+    gyr_q1_2 = sq_6*np.array([2, 2, 0])
+    gyr_q2_2 = sq_6*np.array([2, 0, 2])
+    gyr_q3_2 = sq_6*np.array([0, 2, 2])
+    gyr_q4_2 = sq_6*np.array([-2, 2, 0])
+    gyr_q5_2 = sq_6*np.array([-2, 0, 2])
+    gyr_q6_2 = sq_6*np.array([0, -2, 2])
+    
+    bcc_q1 = 2**(-0.5)*q_star*np.array([1,1,0])
+    bcc_q2 = 2**(-0.5)*q_star*np.array([-1,1,0])
+    bcc_q3 = 2**(-0.5)*q_star*np.array([0,1,1])
+    bcc_q4 = 2**(-0.5)*q_star*np.array([0,1,-1])
+    bcc_q5 = 2**(-0.5)*q_star*np.array([1,0,1])
+    bcc_q6 = 2**(-0.5)*q_star*np.array([1,0,-1])
+
+    sq_cyl_q1 = q_star * np.array([1,0,0])
+    sq_cyl_q2 = q_star * np.array([0,1,0])
+    
+    sq_cyl_q1_2 = q_star * np.array([2,0,0])
+    sq_cyl_q2_2 = q_star * np.array([0,2,0])
+    
+    sim_cub_q1 = q_star * np.array([1,0,0])
+    sim_cub_q2 = q_star * np.array([0,1,0])
+    sim_cub_q3 = q_star * np.array([0,0,1])
+    
+    sim_cub_q1_2 = q_star * np.array([2,0,0])
+    sim_cub_q2_2 = q_star * np.array([0,2,0])
+    sim_cub_q3_2 = q_star * np.array([0,0,2])
+    
+    fcc_q1 = 3**(-0.5)*q_star*np.array([1,1,1])
+    fcc_q2 = 3**(-0.5)*q_star*np.array([1,1,-1])
+    fcc_q3 = 3**(-0.5)*q_star*np.array([1,-1,1])
+    fcc_q4 = 3**(-0.5)*q_star*np.array([-1,1,1])
+    
+    G3 = gamma3_E(poly_mat, dens, N_m, b, M, cyl_qs) # all g3s are eqivlaent
+    G3_211 = gamma3_E(poly_mat, dens, N_m, b, M, np.array([lam_q, lam_q, -lam_q_2])) 
+
+    lam_g3 = 0
+    lam_g3_2 = 0
+    lam_g3_mix = -(1/6) * 6 * G3_211
+    
+    cyl_g3 = (1/6)  * (1/(3*np.sqrt(3))) * 12 * G3#gamma3_E(poly_mat, dens, N_m, b, M, cyl_qs)
+    cyl_g3_2 = -(1/6)  * (1/(3*np.sqrt(3))) * 12 * gamma3_E(poly_mat, dens, N_m, b, M, cyl_qs_2)
+    cyl_g3_mix = -(1/6) * (1/(3*np.sqrt(3))) * 36 * gamma3_E(poly_mat, dens, N_m, b, M, np.array([-cyl_q2_2, -cyl_q2, cyl_q1]))
+
+    gyr_g3 = (1/6)  * (1/(12*np.sqrt(12))) * 48 * G3#gamma3_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q11, -gyr_q3]))
+    gyr_g3_2 = (1/6) * (1/(6*np.sqrt(6))) * 48 * gamma3_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1_2, -gyr_q3_2, gyr_q5_2]))
+
+    gyr_g3_mix = -(1/6) * (1/(12*np.sqrt(6))) * 72 * gamma3_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q4, -gyr_q3_2]))
+
+    bcc_g3 = (4/(3*np.sqrt(6))) * G3#gamma3_E(poly_mat, dens, N_m, b, M, np.array([bcc_q6, bcc_q3, -bcc_q1]))
+
+    sq_cyl_g3 = 0
+    sq_cyl_g3_2 = 0
+    sq_cyl_g3_mix = -(1/6) * (1/(2*np.sqrt(2))) * 12 * G3_211
+    
+    sim_cub_g3 = 0
+    sim_cub_g3_2 = 0
+    sim_cub_g3_mix = -(1/6) * (1/(3*np.sqrt(3))) * 18 * G3_211
+    
+    fcc_g3 = 0
+
+    G4_00 = gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q, -lam_q]))
+    G4_2_00 = gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q_2, -lam_q_2, lam_q_2, -lam_q_2]))
+    G4_mix = gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q_2, -lam_q_2]))
+    
+    lam_g4 = (1/24) * (6) * G4_00#gamma4_E(poly_mat, dens, N_m, b, M, np.array([lam_q, -lam_q, lam_q, -lam_q]))
+    lam_g4_2 = (1/24) * (6)  * G4_2_00
+    lam_g4_mix = (1/24) * 24  * G4_mix
+    
+    cyl_g4 = (1/24) * (1/9) *(18*G4_00 + \
+              72*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1, -cyl_q1, cyl_q2, -cyl_q2])))
+    cyl_g4_2 = (1/24) * (1/9) * (18*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1_2 , -cyl_q1_2 , cyl_q1_2 , -cyl_q1_2 ])) + \
+              72*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1_2, -cyl_q1_2, cyl_q2_2, -cyl_q2_2]))) 
+
+    cyl_g4_mix1 = (1/3) * (2*gamma4_E(poly_mat, dens, N_m, b, M, np.array([-cyl_q3_2, cyl_q3, -cyl_q2, -cyl_q2_2])) + \
+                           3*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q2_2, -cyl_q2_2, -cyl_q3, cyl_q3])) + \
+                           2*gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q1, -cyl_q1, -cyl_q3_2, cyl_q3_2])))
+    cyl_g4_mix2 = (1/3) * gamma4_E(poly_mat, dens, N_m, b, M, np.array([cyl_q2_2, cyl_q2, cyl_q2, cyl_q3]))
+
+    
+    gyr_g4 = (1/24)* (1/(12*12)) * (72*G4_00 + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q8, -gyr_q8])) + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q10, -gyr_q10])) + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q11, -gyr_q11])) + \
+                       144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q4, -gyr_q4])) + \
+                       576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q12, -gyr_q12])) + \
+                       -288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, gyr_q4, -gyr_q10, -gyr_q5])) + \
+                       144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q2, gyr_q4, -gyr_q10])) + \
+                       -288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q5, -gyr_q7, gyr_q2])))
+    
+    gyr_g4_2 = (1/24) * (1/36) * (36*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1_2, -gyr_q1_2, gyr_q1_2, -gyr_q1_2])) + \
+                       288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1_2, -gyr_q1_2, gyr_q2_2, -gyr_q2_2])) + \
+                       72*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1_2, -gyr_q1_2, gyr_q4_2, -gyr_q4_2])) + \
+                       144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1_2, -gyr_q2_2, gyr_q5_2, -gyr_q4_2])))
+
+    gyr_g4_mix1 = (1/24) * (1/(6*12)) * (576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q1, gyr_q4_2, -gyr_q4_2])) + \
+                           576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q1, gyr_q1_2, -gyr_q1_2])) + \
+                           -576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q4_2, gyr_q11, -gyr_q1_2])) + \
+                           288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q4_2, gyr_q1, -gyr_q3_2])) + \
+                           -576*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q4_2, -gyr_q6_2, -gyr_q11])) + \
+                           288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q6_2, -gyr_q6_2])) + \
+                           288*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q7, gyr_q3_2, -gyr_q3_2])))
+    
+    gyr_g4_mix2 = (1/3) * (2*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, -gyr_q4_2, -gyr_q2, -gyr_q6])) + \
+                           -1*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q7, -gyr_q8, gyr_q3_2, -gyr_q9])) + \
+                           -1*gamma4_E(poly_mat, dens, N_m, b, M, np.array([gyr_q1, gyr_q2, -gyr_q9, gyr_q6_2])))
+
+    bcc_g4 = (1/24)* (G4_00 \
+                     + 8*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q1, bcc_q3, -bcc_q3])) \
+                     + 2*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q1, bcc_q2, -bcc_q2])) \
+                     + 4*gamma4_E(poly_mat, dens, N_m, b, M, np.array([bcc_q1, -bcc_q3, bcc_q2, -bcc_q4])) )
+    
+    G4_90deg = gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1 , -sq_cyl_q1 , sq_cyl_q2 , -sq_cyl_q2 ]))
+    G4_2_90deg = gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1_2 , -sq_cyl_q1_2 , sq_cyl_q2_2 , -sq_cyl_q2_2 ]))
+    G4_mix_90deg = gamma4_E(poly_mat, dens, N_m, b, M, np.array([sq_cyl_q1, -sq_cyl_q2_2, -sq_cyl_q1, sq_cyl_q2_2]))
+    
+    sq_cyl_g4 = (1/24) * (1/4) * (12*G4_00 + \
+                                  24*G4_90deg)
+    sq_cyl_g4_2 = (1/24) * (1/4) * (12*G4_2_00 + \
+                                   24*G4_2_90deg)
+    sq_cyl_g4_mix = (1/24) * (1/4) * (48 * G4_mix + 48 * G4_mix_90deg)
+    
+    sim_cub_g4 = (1/24) * (1/9) * (18*G4_00+ \
+                                   72*G4_90deg)
+    sim_cub_g4_2 = (1/24) * (1/9) * (18*G4_2_00+ \
+                                   72*G4_2_90deg)
+    sim_cub_g4_mix = (1/24) * (1/9) * (72*G4_mix + 144 * G4_mix_90deg)
+    
+    fcc_g4 = (1/24) * (1/16) * (24*G4_00\
+                                + 144*gamma4_E(poly_mat, dens, N_m, b, M, np.array([fcc_q1, -fcc_q1, fcc_q2, -fcc_q2]))\
+                                - 48*gamma4_E(poly_mat, dens, N_m, b, M, np.array([-fcc_q1, fcc_q2, fcc_q3, fcc_q4])))
+    
+    for CHI in chi_array:
+        lam_g2 = (1/2) * 2 * (1) * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)       
+        lam_g2_2 = (1/2) * 2 * (1) * gamma2_E(poly_mat, dens, N_m, b, M, 2*q_star, CHI)         
+        
+        cyl_g2 = lam_g2
+        cyl_g2_2 = (1/2) * (1/3) * 6  * gamma2_E(poly_mat, dens, N_m, b, M, np.sqrt(3)*q_star, CHI)    
+
+        gyr_g2 = lam_g2
+        gyr_g2_2 = (1/2) * 12 * (1/6) * gamma2_E(poly_mat, dens, N_m, b, M, np.sqrt(4/3)*q_star, CHI)    
+        
+        bcc_g2 = lam_g2
+        
+        sq_cyl_g2 = lam_g2#(1/2) * (1/2) * 4 * gamma2_E(poly_mat, dens, N_m, b, M, q_star, CHI)
+        sq_cyl_g2_2 = lam_g2_2
+        
+        sim_cub_g2 = lam_g2
+        sim_cub_g2_2 = lam_g2_2
+        
+        fcc_g2 = lam_g2
+        
+        # when doing phase minimization, should always have the gamma 3 be negative.
+        if cyl_g3>0:
+            cyl_g3*= -1
+        if cyl_g3_2>0:
+            cyl_g3_2*= -1
+        if cyl_g3_mix>0:
+            cyl_g3_mix*= -1
+            
+        if gyr_g3>0:
+            gyr_g3*= -1
+        if gyr_g3_2>0:
+            gyr_g3_2*= -1
+        if gyr_g3_mix>0:
+            gyr_g3_mix*= -1
+            
+        if lam_g3_mix>0:
+            lam_g3_mix*= -1
+
+        if sim_cub_g3_mix>0:
+            sim_cub_g3_mix*= -1
+            
+        if sq_cyl_g3_mix>0:
+            sq_cyl_g3_mix*= -1
+        
+        if bcc_g3>0:
+            bcc_g3*= -1
+
+        if fcc_g3>0:
+            fcc_g3*= -1
+
+#         if FA >= 0.5:
+#             initial = [-1, -1] 
+#             in_bcc = -1
+#         else:
+#             initial = [1,1]
+#             in_bcc = 1
+            
+        initial = [0, 0] 
+        in_bcc = 0
+
+
+        amp_l1, amp_l2 = optimize.fmin(lambda amps: np.real(amps[0]**2 * lam_g2 + amps[0]**3 * lam_g3 + amps[0]**4 * lam_g4 + \
+                                                        amps[1]**2 * lam_g2_2 + amps[1]**3 * lam_g3_2 + amps[1]**4 * lam_g4_2 + \
+                                                        amps[0]**2 * amps[1] * lam_g3_mix + amps[0]**2 * amps[1]**2 * lam_g4_mix), \
+                              initial, disp=False)
+
+        
+        amp_c1, amp_c2 = optimize.fmin(lambda amps: np.real(amps[0]**2 * cyl_g2 + amps[0]**3 * cyl_g3 + amps[0]**4 * cyl_g4 + \
+                                                 amps[1]**2 * cyl_g2_2 + amps[1]**3 * cyl_g3_2 + amps[1]**4 * cyl_g4_2 + \
+                                                 amps[0]**2 * amps[1] * cyl_g3_mix + amps[0]**2 * amps[1]**2 * cyl_g4_mix1 + \
+                                                 amps[0]**3 * amps[1] * cyl_g4_mix2), \
+                              initial, disp=False)
+        
+        amp_g1, amp_g2 = optimize.fmin(lambda amps: np.real(amps[0]**2 * gyr_g2 + amps[0]**3 * gyr_g3 + amps[0]**4 * gyr_g4 + \
+                                                 amps[1]**2 * gyr_g2_2 + amps[1]**3 * gyr_g3_2 + amps[1]**4 * gyr_g4_2 + \
+                                                 amps[0]**2 * amps[1] * gyr_g3_mix + amps[0]**2 * amps[1]**2 * gyr_g4_mix1 + \
+                                                 amps[0]**3 * amps[1] * gyr_g4_mix2), \
+                              initial, disp=False)
+        
+        amp_bcc1 = optimize.fmin(lambda amps: np.real(amps**2 * bcc_g2 + amps**3 * bcc_g3 + amps**4 * bcc_g4), \
+                              in_bcc, disp=False)
+        
+        amp_sq_c1, amp_sq_c2 = optimize.fmin(lambda amps: np.real(amps[0]**2 * sq_cyl_g2 + amps[0]**3 * sq_cyl_g3 + amps[0]**4 * sq_cyl_g4 + \
+                                                        amps[1]**2 * sq_cyl_g2_2 + amps[1]**3 * sq_cyl_g3_2 + amps[1]**4 * sq_cyl_g4_2 + \
+                                                        amps[0]**2 * amps[1] * sq_cyl_g3_mix + amps[0]**2 * amps[1]**2 * sq_cyl_g4_mix), \
+                              initial, disp=False)
+        
+        amp_sim_c1, amp_sim_c2 = optimize.fmin(lambda amps: np.real(amps[0]**2 * sim_cub_g2 + amps[0]**3 * sim_cub_g3 + amps[0]**4 * sim_cub_g4 + \
+                                                        amps[1]**2 * sim_cub_g2_2 + amps[1]**3 * sim_cub_g3_2 + amps[1]**4 * sim_cub_g4_2 + \
+                                                        amps[0]**2 * amps[1] * sim_cub_g3_mix + amps[0]**2 * amps[1]**2 * sim_cub_g4_mix), \
+                              initial, disp=False)
+        
+        amp_fcc1 = optimize.fmin(lambda amps: np.real(amps**2 * fcc_g2 + amps**3 * fcc_g3 + amps**4 * fcc_g4), \
+                              1, disp=False)
+        
+        lamF = amp_l1**2 * lam_g2 + amp_l1**3 * lam_g3 + amp_l1**4 * lam_g4 + \
+                amp_l2**2 * lam_g2_2 + amp_l2**3 * lam_g3_2 + amp_l2**4 * lam_g4_2 +\
+                amp_l1**2 * amp_l2 * lam_g3_mix + amp_l1**2 * amp_l2**2 * lam_g4_mix
+        
+        cylF = amp_c1**2 * cyl_g2 + amp_c1**3 * cyl_g3 + amp_c1**4 * cyl_g4 +\
+                amp_c2**2 * cyl_g2_2 + amp_c2**3 * cyl_g3_2 + amp_c2**4 * cyl_g4_2 + \
+                amp_c1**2 * amp_c2 * cyl_g3_mix + amp_c1**2 * amp_c2**2 * cyl_g4_mix1 +\
+                amp_c1**3 * amp_c2 * cyl_g4_mix2
+        
+        gyrF = amp_g1**2 * gyr_g2 + amp_g1**3 * gyr_g3 + amp_g1**4 * gyr_g4 +\
+                amp_g2**2 * gyr_g2_2 + amp_g2**3 * gyr_g3_2 + amp_g2**4 * gyr_g4_2 + \
+                amp_g1**2 * amp_g2 * gyr_g3_mix + amp_g1**2 * amp_g2**2 * gyr_g4_mix1 +\
+                amp_g1**3 * amp_g2 * gyr_g4_mix2
+        
+        bccF = amp_bcc1**2 * bcc_g2 + amp_bcc1**3 * bcc_g3 + amp_bcc1**4 * bcc_g4
+
+        sq_cylF = amp_sq_c1**2 * sq_cyl_g2 + amp_sq_c1**3 * sq_cyl_g3 + amp_sq_c1**4 * sq_cyl_g4 + \
+                amp_sq_c2**2 * sq_cyl_g2_2 + amp_sq_c2**3 * sq_cyl_g3_2 + amp_sq_c2**4 * sq_cyl_g4_2 +\
+                amp_sq_c1**2 * amp_sq_c2 * sq_cyl_g3_mix + amp_sq_c1**2 * amp_sq_c2**2 * sq_cyl_g4_mix
+        
+        sim_cubF = amp_sim_c1**2 * sim_cub_g2 + amp_sim_c1**3 * sim_cub_g3 + amp_sim_c1**4 * sim_cub_g4 + \
+                amp_sim_c2**2 * sim_cub_g2_2 + amp_sim_c2**3 * sim_cub_g3_2 + amp_sim_c2**4 * sim_cub_g4_2 +\
+                amp_sim_c1**2 * amp_sim_c2 * sim_cub_g3_mix + amp_sim_c1**2 * amp_sim_c2**2 * sim_cub_g4_mix
+
+        fccF = amp_fcc1**2 * fcc_g2 + amp_fcc1**3 * fcc_g3 + amp_fcc1**4 * fcc_g4
+
+#         num_iters = 100
+#         lam = basinhopping(lambda amps: np.real(amps[0]**2 * lam_g2 + amps[0]**3 * lam_g3 + amps[0]**4 * lam_g4 + \
+#                                                         amps[1]**2 * lam_g2_2 + amps[1]**3 * lam_g3_2 + amps[1]**4 * lam_g4_2 + \
+#                                                         amps[0]**2 * amps[1] * lam_g3_mix + amps[0]**2 * amps[1]**2 * lam_g4_mix), \
+#                               initial, disp=False, niter = num_iters)
+
+
+#         cyl = basinhopping(lambda amps: np.real(amps[0]**2 * cyl_g2 + amps[0]**3 * cyl_g3 + amps[0]**4 * cyl_g4 + \
+#                                                  amps[1]**2 * cyl_g2_2 + amps[1]**3 * cyl_g3_2 + amps[1]**4 * cyl_g4_2 + \
+#                                                  amps[0]**2 * amps[1] * cyl_g3_mix + amps[0]**2 * amps[1]**2 * cyl_g4_mix1 + \
+#                                                  amps[0]**3 * amps[1] * cyl_g4_mix2), \
+#                               initial, disp=False, niter = num_iters)
+        
+#         gyr = basinhopping(lambda amps: np.real(amps[0]**2 * gyr_g2 + amps[0]**3 * gyr_g3 + amps[0]**4 * gyr_g4 + \
+#                                                  amps[1]**2 * gyr_g2_2 + amps[1]**3 * gyr_g3_2 + amps[1]**4 * gyr_g4_2 + \
+#                                                  amps[0]**2 * amps[1] * gyr_g3_mix + amps[0]**2 * amps[1]**2 * gyr_g4_mix1 + \
+#                                                  amps[0]**3 * amps[1] * gyr_g4_mix2), \
+#                               initial, disp=False, niter = num_iters)
+        
+#         bcc = basinhopping(lambda amps: np.real(amps**2 * bcc_g2 + amps**3 * bcc_g3 + amps**4 * bcc_g4), \
+#                               in_bcc, disp=False, niter = num_iters)
+        
+#         lamF = lam.fun
+        
+#         cylF = cyl.fun
+        
+#         gyrF = gyr.fun
+        
+#         bccF = bcc.fun
+
+        point = np.array([FA, CHI*N])
+
+        minF = min([lamF, cylF, gyrF, bccF, sq_cylF, sim_cubF, fccF])
 
         if minF > 0:
             phase_name = "dis"
