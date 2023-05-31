@@ -214,7 +214,7 @@ def calc_sf3(poly_mat, dens, N_m, b, k_vec, k_vec_2, plotting = False):
         case2 = [[k_2, k_12], [j2, j1, j3]]
         
         # CASE 3; kA = k2, kB = -k1; S2 > S3 > S1 and S1 > S3 > S2
-        case3 = [[k_2, -k_1], [j2, j3, j1]]
+        case3 = [[-k_2, k_1], [j2, j3, j1]] # SWITCHED negatives from -k_1
         
         case_arr = [case1, case2, case3]#, case1deg, case2deg, case3deg]
         # need to consider degenerate cases. flipping each element in array, then appending to original case array
@@ -527,8 +527,8 @@ def calc_sf4(poly_mat, dens, N_m, b, k_vec, k_vec_2, k_vec_3, plotting = False):
     s4[1][1][1][1] = S4_BBBB_arr[0]
     
     if plotting: # matrix only contains single value, for calculating gamma functions
-        raise Exception("need to fix return value")
-        return S4_AAAA_arr, S4_AAAB_arr, S4_AABA_arr, S4_ABAA_arr, S4_BAAA_arr, S4_AABB_arr, S4_BBAA_arr, S4_ABAB_arr, S4_BABA_arr, S4_ABBA_arr, S4_ABBB_arr, S4_BABB_arr, S4_BBAB_arr, S4_BBBA_arr, S4_BBBB_arr 
+#         raise Exception("need to fix return value")
+        return S4_AAAA_arr, S4_AAAB_arr, S4_AABA_arr, S4_ABAA_arr, S4_BAAA_arr, S4_AABB_arr, S4_BBAA_arr, S4_BAAB_arr, S4_ABBA_arr, S4_BABA_arr, S4_ABAB_arr, S4_BBBA_arr, S4_BBAB_arr, S4_BABB_arr, S4_ABBB_arr, S4_BBBB_arr 
     
     return s4 
 
@@ -903,6 +903,28 @@ def gamma2_E(poly_mat, dens, N_m, b, M, k, chi):
         
     return -2*chi + N*G
 
+# def gamma3_E(poly_mat, dens, N_m, b, M, Ks):
+#     K1, K2, K3 = Ks
+#     N = N_m * M
+#     if np.linalg.norm(K1+K2+K3) >= 1e-10:
+#         raise Exception('Qs must add up to zero')
+        
+# #     if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5 \
+# #         and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5):
+# #         raise Exception('Qs must have same length')
+    
+#     s2inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K1])
+    
+#     s3 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K2])
+
+#     val = 0
+#     for I0, I1, I2 in product([0,1], repeat=3):
+#         val -= s3[I0][I1][I2]* (s2inv[I0][0] - s2inv[I0][1])*\
+#                                (s2inv[I1][0] - s2inv[I1][1])*\
+#                                (s2inv[I2][0] - s2inv[I2][1])
+    
+#     return val*(N**2) 
+
 def gamma3_E(poly_mat, dens, N_m, b, M, Ks):
     K1, K2, K3 = Ks
     N = N_m * M
@@ -914,16 +936,64 @@ def gamma3_E(poly_mat, dens, N_m, b, M, Ks):
 #         raise Exception('Qs must have same length')
     
     s2inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K1])
+    s2inv_2 = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K2])
+    s2inv_3 = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K3])
     
     s3 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K2])
 
     val = 0
     for I0, I1, I2 in product([0,1], repeat=3):
         val -= s3[I0][I1][I2]* (s2inv[I0][0] - s2inv[I0][1])*\
-                               (s2inv[I1][0] - s2inv[I1][1])*\
-                               (s2inv[I2][0] - s2inv[I2][1])
+                               (s2inv_2[I1][0] - s2inv_2[I1][1])*\
+                               (s2inv_3[I2][0] - s2inv_3[I2][1])
     
     return val*(N**2) 
+# def gamma4_E(poly_mat, dens, N_m, b, M, Ks):
+#     K1, K2, K3, K4 = Ks
+#     if np.linalg.norm(K1+K2+K3+K4) >= 1e-10:
+#         raise Exception('Qs must add up to zero')
+# #     if not (abs(np.linalg.norm(K1)-np.linalg.norm(K2)) < 1e-5
+# #             and abs(np.linalg.norm(K2)-np.linalg.norm(K3)) < 1e-5
+# #             and abs(np.linalg.norm(K3)-np.linalg.norm(K4)) < 1e-5):
+# #         print(K1, K2, K3, K4)
+# #         raise Exception('Qs must have same length')
+    
+#     N = M * N_m
+# #     print("shapoopy")
+#     K = np.linalg.norm(K1)
+#     K12 = np.linalg.norm(K1+K2)
+#     K13 = np.linalg.norm(K1+K3)
+#     K14 = np.linalg.norm(K1+K4)
+
+#     s4 = calc_sf4(poly_mat, dens, N_m, b, [K1], [K2], [K3]) 
+# #     print("s4:", s4)
+#     s31 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K2])
+#     s32 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K3])
+#     s33 = calc_sf3(poly_mat, dens, N_m, b, [K1], [K4])
+#     s2inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K])
+#     s21inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K12])
+#     s22inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K13])
+#     s23inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K14])
+
+
+#     G4 = np.zeros((2,2,2,2),dtype=type(1+1j))
+#     for a1, a2, a3, a4 in product([0,1], repeat=4):
+#         for I0, I1 in product([0,1], repeat=2):
+#             G4[a1][a2][a3][a4] += \
+#                 s31[a1][a2][I0]*s31[a3][a4][I1]*s21inv[I0][I1] + \
+#                 s32[a1][a4][I0]*s32[a2][a3][I1]*s22inv[I0][I1] + \
+#                 s33[a1][a3][I0]*s33[a2][a4][I1]*s23inv[I0][I1]
+#     G4 -= s4
+    
+#     val = 0
+#     for I0, I1, I2, I3 in product([0,1], repeat=4):
+#         val += G4[I0][I1][I2][I3] *\
+#                 (s2inv[I0][0] - s2inv[I0][1])*\
+#                 (s2inv[I1][0] - s2inv[I1][1])*\
+#                 (s2inv[I2][0] - s2inv[I2][1])*\
+#                 (s2inv[I3][0] - s2inv[I3][1])
+                
+#     return val*(N**3)
 
 def gamma4_E(poly_mat, dens, N_m, b, M, Ks):
     K1, K2, K3, K4 = Ks
@@ -952,6 +1022,10 @@ def gamma4_E(poly_mat, dens, N_m, b, M, Ks):
     s22inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K13])
     s23inv = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K14])
 
+    s2inv_2 = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K2])
+    s2inv_3 = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K3])
+    s2inv_4 = calc_sf2_inv(poly_mat, dens, N_m, b, M, [K4])
+
     G4 = np.zeros((2,2,2,2),dtype=type(1+1j))
     for a1, a2, a3, a4 in product([0,1], repeat=4):
         for I0, I1 in product([0,1], repeat=2):
@@ -965,9 +1039,9 @@ def gamma4_E(poly_mat, dens, N_m, b, M, Ks):
     for I0, I1, I2, I3 in product([0,1], repeat=4):
         val += G4[I0][I1][I2][I3] *\
                 (s2inv[I0][0] - s2inv[I0][1])*\
-                (s2inv[I1][0] - s2inv[I1][1])*\
-                (s2inv[I2][0] - s2inv[I2][1])*\
-                (s2inv[I3][0] - s2inv[I3][1])
+                (s2inv_2[I1][0] - s2inv_2[I1][1])*\
+                (s2inv_3[I2][0] - s2inv_3[I2][1])*\
+                (s2inv_4[I3][0] - s2inv_4[I3][1])
                 
     return val*(N**3)
 
