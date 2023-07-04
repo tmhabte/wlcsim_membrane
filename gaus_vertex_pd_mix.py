@@ -29,6 +29,7 @@ class Mix:
         if self.n_p != 1:
             poly_mat_padded = []
             for i, poly in enumerate(poly_mat):
+                poly = list(poly)
                 M_p = M_arr[i]
                 if M_p < M_max:
                     new_poly = poly + [2]*(M_max - M_p)
@@ -61,6 +62,10 @@ class Mix:
         self.M4_inds = ["AAAA, AAAB, AABA, ABAA, BAAA, AABB, BBAA, BAAB, ABBA, BABA, ABAB, BBBA, BBAB, BABB, ABBB, BBBB"]
         
         self.q_star = self.spinodal_gaus()#poly_mat, dens, N_m, b, M, M_arr)
+        
+        self.C2 = "empty"
+        self.C3 = "empty"
+        self.C4 = "empty"
 
     def calc_monomer_matrix(self, alphas):
         # calculates the alpha1 alpha2 monomer identity cross correlation matrix
@@ -94,14 +99,19 @@ class Mix:
             alph2 =np.zeros((self.n_p, self.M_max))
         elif alphas[1] == 1:
             alph2 =np.ones((self.n_p, self.M_max))                
-
+#         print("alpha1: ", alph1)
+#         print("alpha2: ", alph2)
+#         print("polymat padded:")
+#         print(np.array(self.poly_mat_padded))
+#         print("comp:")
+#         print((np.array(self.poly_mat_padded) == alph1))
         #extend dens into n_pxM matrix
-        poly_weights = (np.ones((self.n_p, self.M_max)).T * self.dens).T
+        poly_weights = (np.ones((self.n_p, self.M_max)).T * np.array(self.dens)).T
 
         #multiply sigams by density of each polymer
-        sigma1 = 1*((self.poly_mat_padded == alph1))#.sum(axis = 0) #sigma. could multiply each
-        sigma2 = 1*((self.poly_mat_padded == alph2))#.sum(axis = 0)
-
+        sigma1 = 1*((np.array(self.poly_mat_padded) == alph1))#.sum(axis = 0) #sigma. could multiply each
+        sigma2 = 1*((np.array(self.poly_mat_padded) == alph2))#.sum(axis = 0)
+#         print(sigma1)
         #need to do each row outer product with corresponding row, get n_p MxM matrices, then sum the results
         prods = np.einsum('bi,bo->bio', sigma1*poly_weights, sigma2) # performing row wise cross product (each poly contribution)
         M2 = np.sum(prods, axis = 0)#           ^^^^ averaging each contribution
@@ -309,6 +319,12 @@ def calc_sf2(mix, k_vec = np.logspace(-2, 2, 50)):
     S2_AB_arr = np.zeros(nk)
     S2_BA_arr = np.zeros(nk)
     S2_BB_arr = np.zeros(nk)
+#     if (not plotting) and (mix.C2 != "empty"):
+#         C = mix.C2
+#         S2_AA_arr[i] = np.sum((1/M**2) * C * M2_AA)
+#         S2_AB_arr[i] = np.sum((1/M**2) * C * M2_AB)
+#         S2_BA_arr[i] = np.sum((1/M**2) * C * M2_BA)
+#         S2_BB_arr[i] = np.sum((1/M**2) * C * M2_BB)
     for i, k in enumerate(k_vec):
         C = np.zeros((M_max, M_max))
         k = np.linalg.norm(k)
