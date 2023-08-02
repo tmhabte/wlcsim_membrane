@@ -113,8 +113,10 @@ class Mix:
         sigma2 = 1*((np.array(self.poly_mat_padded) == alph2))#.sum(axis = 0)
 #         print(sigma1)
         #need to do each row outer product with corresponding row, get n_p MxM matrices, then sum the results
-        prods = np.einsum('bi,bo->bio', sigma1*poly_weights, sigma2) # performing row wise cross product (each poly contribution)
-        M2 = np.sum(prods, axis = 0)#           ^^^^ averaging each contribution
+#         prods = np.einsum('bi,bo->bio', sigma1*poly_weights, sigma2) # performing row wise cross product (each poly contribution)
+#         M2 = np.sum(prods, axis = 0)#           ^^^^ averaging each contribution
+        
+        M2 = np.einsum('bi,bo->io', sigma1*poly_weights, sigma2) # faster war fto do row-wise cross prod
         return M2
     
     def calc_monomer_matrix_3(self, alphas):
@@ -161,8 +163,10 @@ class Mix:
         sigma3 = 1*((self.poly_mat_padded == alph3))
 
         #need to do each row outer product with corresponding row, get n_p MxMxM matrices, then sum the results
-        prods = np.einsum('bi,bo,bn->bion', sigma1*poly_weights, sigma2, sigma3) # performing row wise cross product (each poly contribution)
-        M3 = np.sum(prods, axis = 0)#           ^^^^ averaging each contribution
+#         prods = np.einsum('bi,bo,bn->bion', sigma1*poly_weights, sigma2, sigma3) # performing row wise cross product (each poly contribution)
+#         M3 = np.sum(prods, axis = 0)#           ^^^^ averaging each contribution
+        
+        M3 = np.einsum('bi,bo,bn->ion', sigma1*poly_weights, sigma2, sigma3)
         return M3
 
     def calc_monomer_matrix_4(self, alphas):
@@ -215,8 +219,10 @@ class Mix:
         sigma4 = 1*((self.poly_mat_padded == alph4))
 
         #need to do each row outer product with corresponding row, get n_p MxMxM matrices, then sum the results
-        prods = np.einsum('bi,bo,bn,bm->bionm', sigma1*poly_weights, sigma2, sigma3, sigma4) # performing row wise cross product (each poly contribution)
-        M4 = np.sum(prods, axis = 0) #           ^^^^ averaging each contribution
+#         prods = np.einsum('bi,bo,bn,bm->bionm', sigma1*poly_weights, sigma2, sigma3, sigma4) # performing row wise cross product (each poly contribution)
+#         M4 = np.sum(prods, axis = 0) #           ^^^^ averaging each contribution
+        
+        M4 = np.einsum('bi,bo,bn,bm->ionm', sigma1*poly_weights, sigma2, sigma3, sigma4)
         return M4
 
     def spinodal_gaus(self):
