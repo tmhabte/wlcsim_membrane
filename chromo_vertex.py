@@ -120,6 +120,37 @@ def eval_f_bind_vec(n_b, n_m_arr, e_m, j_int):
         f_bind_arr[i] = f_bind
     return f_bind_arr
 
+def calc_saddle_point_E(f_bars, mu, chrom): 
+    [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+    # For two protein types, calculates the part of saddle point free energy that changes when the 
+    # average binding state changes
+    # f_gammas: list of the two average binding fractions, one for each protein type
+    
+    # calc mean-field protein-protein interaction
+    mf_pp_int = 0.5*phi_c**2
+    for g1 in range(len(f_bars)):
+        for g2 in range(len(f_bars)):
+            mf_pp_int += v_int[g1][g2]*f_bars[g1]*f_bars[g2]
+            
+    # calc binding partition function
+    phi_bind_arr = phi_c * np.array(f_bars)
+    erg_int = np.matmul(phi_bind_arr, v_int)
+    
+    coef1 = -erg_int[0] + mu[0] 
+    coef2 = -erg_int[1] + mu[1]    
+    
+    f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[0], e_m[0], v_int[0,0])
+    f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[0], e_m[0], v_int[0,0])
+    f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[1], e_m[1], v_int[1,1])
+    f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[1], e_m[1], v_int[1,1])
+    
+    gam1_part = np.sum(np.log(1 + np.exp(coef1 - f_bind_g1_s1) + np.exp(2*coef1 - f_bind_g1_s2)))
+    gam2_part = np.sum(np.log(1 + np.exp(coef2 - f_bind_g2_s1) + np.exp(2*coef2 - f_bind_g2_s2)))
+    
+    bind_part = phi_c*(gam1_part + gam2_part)
+    return -1 * (mf_pp_int + bind_part)
+
 def calc_binding_states(chrom):
     # calculate f_gam and s_bind for each protein type, at each mu given
     # KEY RETURNS: f_gam_soln_arr, list of matrices of self-consistent f_gammas (for protein 1 and 2) at each mu1, mu2
@@ -200,34 +231,34 @@ def calc_binding_states(chrom):
             inds = np.array([x for x in aset & bset])+1
 
             f_gam_solns = np.zeros(len(inds), dtype = "object")#f_gam_arr[inds[0]]
-            min_soln = [-1]*n_bind
-
+        
+            min_E_soln = [None]*n_bind
+            min_E = None
             for i in range(len(inds)):
+
+                #original solution
                 soln = f_gam_arr[inds[i]]           
                 f_gam_solns[i] = soln
-                #choosing only one solution- minimum one
-                if min_soln[0] == -1:
-                    min_soln = soln
-                else:
-    #                 if soln[0] <= min_soln[0] and soln[1] <= min_soln[1]:
-    #                     min_soln = soln
-    #                 if soln[0] + soln[1] < min_soln[0] + min_soln[1]:# and soln[1] <= min_soln[1]:
-    #                     min_soln = soln
 
-    #                 # extremes
-                    if soln[1] < min_soln[1]:
-                        min_soln = soln
-                    elif soln[1] == min_soln[1] and soln[0] < min_soln[0]:
-                        min_soln = soln
+                if len(inds) == 1:
+                    min_E_soln = soln
+                else:
+                    E_soln = calc_saddle_point_E(soln, mu, chrom)
+                    if min_E == None:
+                        min_E_soln = soln
+                        min_E = E_soln
+                    else:
+                        if E_soln < min_E:
+                            min_E_soln = soln
+                            min_E = E_soln
 
             multi_soln = False
             if len(f_gam_solns) > 1:
-                multi_soln_mus[k,l] = 1
-    #             multi_soln = True
+                multi_soln_mus[k,l] = 1 # noting all mus where there are multiple f_bar solns
 
-            f_gam_solns = [min_soln] #overwriting all solutions with just minimum one
+            f_gam_solns = [min_E_soln] # selecting minimum E solution
 
-
+            
 
             # 4) for each f_gamma solution pair, calculate each individual s_bind (omega = 0-2)
 
@@ -516,11 +547,10 @@ def calc_sf2_chromo_shlk(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
         
     return S2_AA_arr*N**2, S2_AB_arr*N**2, S2_BA_arr*N**2, S2_BB_arr*N**2, S2_cgam0_arr*N**2, S2_cgam1_arr*N**2, S2_cc_arr*N**2
 
-def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr):
+def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
     # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix    
     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
     [marks_1, marks_2] = poly_marks
-    k_vec = np.logspace(-3, -1, 30)
     
     mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
