@@ -10,24 +10,26 @@ Spinodal
 """
 import numpy as np
 
-def def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu):
+def def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_type = "test"):
     # fraction of nucleosomes with 0,1,2 marks per protein type, calculated form marks1, marks2: 
     [marks_1, marks_2] = poly_marks
     f_om = np.array([(np.array(marks_1)==0).sum(),(np.array(marks_1)==1).sum(),(np.array(marks_1)==2).sum(), \
                         (np.array(marks_2)==0).sum(),(np.array(marks_2)==1).sum(),(np.array(marks_2)==2).sum()])/len(marks_1)
     
-#     l_p = 53 # 53 nm
-#     bp_p_b = 45 # base pairs per bond
-#     nm_p_bp = 0.34 # nanometetrs per base pair
-#     b = l_p * 2 #kuhn length
+    if chrom_type == "DNA":
+        l_p = 53 # 53 nm
+        bp_p_b = 45 # base pairs per bond
+        nm_p_bp = 0.34 # nanometetrs per base pair
+        b = l_p * 2 #kuhn length
 
-#     N = (len(marks_1)-1) * bp_p_b * nm_p_bp * (1/b)
-#     N_m = N/(len(marks_1)-1)
+        N = (len(marks_1)-1) * bp_p_b * nm_p_bp * (1/b)
+        N_m = N/(len(marks_1)-1)
     
-    b = 1
-    N_m = 1000
-    N = N_m * len(marks_1)
-    
+    elif chrom_type == "test":
+        b = 1
+        N_m = 1000
+        N = N_m * len(marks_1)
+
     return [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b]
 
     
@@ -231,7 +233,9 @@ def calc_binding_states(chrom):
             inds = np.array([x for x in aset & bset])+1
 
             f_gam_solns = np.zeros(len(inds), dtype = "object")#f_gam_arr[inds[0]]
-        
+            
+            
+            # 3b) compare saddle point free energies if there are multiple solutions
             min_E_soln = [None]*n_bind
             min_E = None
             for i in range(len(inds)):
@@ -617,4 +621,11 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
                                 [cg2[0], 0, g2g1[0], g2g2[0]]])
                 sf_mat[i][j][ik] = S2_mat
     return sf_mat
-        
+
+# def calc_all_sfs(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_test):
+#     chrom = def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_test)
+
+#     f_gam, s_bind = calc_binding_states(chrom)
+
+#     s2_mat_shlk = calc_sf_mats(chrom, f_gam, s_bind)
+    
