@@ -432,9 +432,11 @@ def reduce_sisj_bind(sisj_bind):
     ind = np.arange(0,M,1)
     ind_mesh = np.meshgrid(ind, ind)
     dist = np.abs(ind_mesh[0] - ind_mesh[1])
-    for d in range(M):
-#         print(d)
-        sisj_tens[d] = np.sum(sisj_bind[np.where(dist==d)])
+#     for d in range(M):
+# #         print(d)
+#         sisj_tens[d] = np.sum(sisj_bind[np.where(dist==d)])
+
+    np.add.at(sisj_tens, dist, sisj_bind)
     return sisj_tens
 
 def calc_sf2_chromo(chrom, M2s, k_vec = np.logspace(-3, 2, 50)):
@@ -551,8 +553,13 @@ def calc_sf2_chromo_shlk(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
         
     return S2_AA_arr*N**2, S2_AB_arr*N**2, S2_BA_arr*N**2, S2_BB_arr*N**2, S2_cgam0_arr*N**2, S2_cgam1_arr*N**2, S2_cc_arr*N**2
 
+import time
+
 def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
     # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix    
+#     print("verbose")
+    start_time = time.time()
+    print("beginning")
     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
     [marks_1, marks_2] = poly_marks
     
@@ -561,7 +568,7 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
     
     min_eigval_arr = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)))
     sf_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
-
+    print("entering chemical potential loops:", time.time() - start_time, "seconds")
     for i, mu1 in enumerate(mu1_array[:]):
         for j, mu2 in enumerate(mu2_array[:]):
             
@@ -569,7 +576,7 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
             f1 = f_gam_soln_arr[0][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
             f2 = f_gam_soln_arr[1][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
             f_bars = [f1, f2]
-
+            
             s_bnd = np.zeros(6)
             for ib in range(n_bind*3):
                 s_bnd[ib] = s_bind_soln_arr[ib][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
@@ -577,18 +584,24 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
             #TODO confirm these indices are correct
             indices_0 = np.tile(marks_1, (len(marks_1),1))#.T
             indices_1 = np.tile(marks_2, (len(marks_2),1)).T + 3
+            
+            print("entering M2 reductions:", time.time() - start_time, "seconds")
 
             cc = np.ones((len(marks_1), len(marks_1)))
+            print("completed AA M2:", time.time() - start_time, "seconds")
+            
             cc_red = reduce_sisj_bind(cc)
+            print("reduced AA M2:", time.time() - start_time, "seconds")
 
             s_cgam0 = s_bnd[indices_0]
             s_cgam0_red = reduce_sisj_bind(s_cgam0)
 
             s_cgam1 = s_bnd[indices_1]
             s_cgam1_red = reduce_sisj_bind(s_cgam1)
-
+            
         
             sisj_AA_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 0, 0)
+
             sisj_AA_red = reduce_sisj_bind(sisj_AA_shlk)
 
             sisj_AB_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 0, 1)
@@ -608,7 +621,7 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 #             sisj_BB = eval_sisj_bind(chrom, f_bars, mu, 1, 1)
 #             M2s = [sisj_AA_shlk,sisj_AB_shlk,sisj_BA_shlk,sisj_BB_shlk, s_cgam0, s_cgam1, cc]
 #             M2s = [sisj_AA, sisj_AB, sisj_BA, sisj_BB, s_cgam0, s_cgam1, cc] # 2d cross corr
-
+            print("entering wavevector loop:", time.time() - start_time, "seconds")
             for ik, k in enumerate(k_vec):
                 g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_chromo_shlk(chrom, M2s, [k]))
 
@@ -620,8 +633,76 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
                                 [cg1[0], 0, g1g1[0], g1g2[0]],\
                                 [cg2[0], 0, g2g1[0], g2g2[0]]])
                 sf_mat[i][j][ik] = S2_mat
+            print("mu done!")
     return sf_mat
 
+def calc_sf_mats_nontensor(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
+    # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix, NOT USING SF tensor or reducing sisjs  
+#     print("verbose")
+    start_time = time.time()
+    print("beginning")
+    [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+    [marks_1, marks_2] = poly_marks
+    
+    mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+    mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+    
+    min_eigval_arr = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)))
+    sf_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+    print("entering chemical potential loops:", time.time() - start_time, "seconds")
+    for i, mu1 in enumerate(mu1_array[:]):
+        for j, mu2 in enumerate(mu2_array[:]):
+            
+            mu = [mu1, mu2]
+            f1 = f_gam_soln_arr[0][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
+            f2 = f_gam_soln_arr[1][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
+            f_bars = [f1, f2]
+            
+            s_bnd = np.zeros(6)
+            for ib in range(n_bind*3):
+                s_bnd[ib] = s_bind_soln_arr[ib][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
+
+            #TODO confirm these indices are correct
+            indices_0 = np.tile(marks_1, (len(marks_1),1))#.T
+            indices_1 = np.tile(marks_2, (len(marks_2),1)).T + 3
+            
+            print("entering M2s:", time.time() - start_time, "seconds")
+
+            cc = np.ones((len(marks_1), len(marks_1)))
+#             print("completed AA M2:", time.time() - start_time, "seconds")
+
+            s_cgam0 = s_bnd[indices_0]
+
+            s_cgam1 = s_bnd[indices_1]            
+        
+            sisj_AA_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 0, 0)
+
+            sisj_AB_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 0, 1)
+
+            sisj_BA_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 1, 0)
+
+            sisj_BB_shlk = eval_sisj_bind_shlk(chrom, f_bars, mu, 1, 1)
+            
+            M2s = [sisj_AA_shlk,sisj_AB_shlk,sisj_BA_shlk,sisj_BB_shlk, s_cgam0, s_cgam1, cc]
+            
+#             sisj_AA = eval_sisj_bind(chrom, f_bars, mu, 0, 0)
+#             sisj_AB = eval_sisj_bind(chrom, f_bars, mu, 0, 1)
+#             sisj_BA = eval_sisj_bind(chrom, f_bars, mu, 1, 0)
+#             sisj_BB = eval_sisj_bind(chrom, f_bars, mu, 1, 1)
+#             M2s = [sisj_AA_shlk,sisj_AB_shlk,sisj_BA_shlk,sisj_BB_shlk, s_cgam0, s_cgam1, cc]
+#             M2s = [sisj_AA, sisj_AB, sisj_BA, sisj_BB, s_cgam0, s_cgam1, cc] # 2d cross corr
+            print("entering wavevector loop:", time.time() - start_time, "seconds")
+            for ik, k in enumerate(k_vec):
+                g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_chromo(chrom, M2s, [k]))
+                
+                ss = 1-phi_c
+                S2_mat = 1/N**2 * np.array([[cc[0], 0, cg1[0], cg2[0]],\
+                                [0, ss*N**2, 0, 0], \
+                                [cg1[0], 0, g1g1[0], g1g2[0]],\
+                                [cg2[0], 0, g2g1[0], g2g2[0]]])
+                sf_mat[i][j][ik] = S2_mat
+            print("mu done!")
+    return sf_mat
 # def calc_all_sfs(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_test):
 #     chrom = def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_test)
 
