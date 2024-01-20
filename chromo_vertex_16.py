@@ -11,8 +11,8 @@ Spinodal
 """
 import numpy as np
 
-DATA_TYPE = np.float16
-# DATA_TYPE = np.float32
+# DATA_TYPE = np.float16
+DATA_TYPE = np.float32
 # DATA_TYPE = np.float64
 
 def def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, chrom_type = "test"):
@@ -527,8 +527,16 @@ def eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind):
     exp_11 = np.outer(exp_g1_s1, exp_g2_s1) #getting combined probability at each nucleosome pair
     sisj_bind_numerator += exp_11
     q += exp_11
+    
+    # TESTER
+    typ = type(exp_11[0][0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)    
+        
     del exp_11
     
+
+        
     exp_12 = np.outer(exp_g1_s1, exp_g2_s2)
     sisj_bind_numerator += 2*exp_12
     q += exp_12
@@ -545,7 +553,10 @@ def eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind):
     del exp_22
     
     sisj_bind = sisj_bind_numerator / q
-
+    # TESTER
+    typ = type(sisj_bind[0][0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)
     return sisj_bind
 
 def reduce_sisj_bind(sisj_bind):
@@ -554,46 +565,128 @@ def reduce_sisj_bind(sisj_bind):
     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
     
     ind = np.arange(0,M,1)
-    ind_mesh = np.meshgrid(ind, ind)
-    dist = np.abs(ind_mesh[0] - ind_mesh[1])
-#     for d in range(M):
+    
+#     process = psutil.Process(os.getpid())
+#     base_mem = process.memory_info().rss#/1e6
+    
+#     ind_mesh = np.meshgrid(ind, ind)
+#     dist_old = np.abs(ind_mesh[0] - ind_mesh[1])
+    
+#     mem1 = process.memory_info().rss#/1e6
+#     print("old dist mem: ", mem1 - base_mem)
+    
+    dist = np.abs(ind[:, None] - ind)
+    
+#     mem2 = process.memory_info().rss#/1e6
+#     print("new  dist mem: ", mem2 - mem1)#     for d in range(M):
 # #         print(d)
 #         sisj_tens[d] = np.sum(sisj_bind[np.where(dist==d)])
 
     np.add.at(sisj_tens, dist, sisj_bind)
+    
+    # TESTER
+    typ = type(sisj_tens[0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)
     return sisj_tens
 
 def eval_and_reduce_cc(len_marks_1):
+    process = psutil.Process(os.getpid())
+    base_mems = process.memory_info().rss#/1e6
+    print("--------------------------------------------------------------")
+#     print("starting mem usage in subprocess: ", base_memory_usage)
+    
     cc = np.ones((len_marks_1, len_marks_1), dtype = np.int8)
+    
+    mem1 = process.memory_info().rss#/1e6
+    print("cc mem: ", mem1 - base_mems)
+    
     cc_red = reduce_sisj_bind(cc)
+    
+    mem2 = process.memory_info().rss#/1e6
+    print("cc red func mem: ", mem2 - mem1)
+    print("overall mem of eval_and_reduce_cc: ", mem2 - base_mems)
+    print("---------------------------------------------------------------")
+    # TESTER
+    typ = type(cc_red[0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)
+        
+        
     return cc_red
 
 def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
     [marks_1, marks_2] = poly_marks
     
     s_bnd = s_bnd.astype(DATA_TYPE)
-    
     if gam_ind == 0:
         indices_0 = np.tile(marks_1, (len(marks_1),1))#.T
         s_cgam0 = s_bnd[indices_0]
+        
+        # TESTER
+        typ = type(s_cgam0[0][0])
+        if typ != DATA_TYPE:
+            raise Exception("data tpye is : ", typ)
+            
         s_cgam0_red = reduce_sisj_bind(s_cgam0)
+        
+        # TESTER
+        typ = type(s_cgam0_red[0])
+        if typ != DATA_TYPE:
+            raise Exception("data tpye is : ", typ)
+            
         return s_cgam0_red
     elif gam_ind == 1:
         indices_1 = np.tile(marks_2, (len(marks_2),1)).T + 3
         s_cgam1 = s_bnd[indices_1]
+        
+        # TESTER
+        typ = type(s_cgam1[0][0])
+        if typ != DATA_TYPE:
+            raise Exception("data tpye is : ", typ)
+            
         s_cgam1_red = reduce_sisj_bind(s_cgam1)
+        # TESTER
+        typ = type(s_cgam1_red[0])
+        if typ != DATA_TYPE:
+            raise Exception("data tpye is : ", typ)
+            
         return s_cgam1_red
     else:
         raise Exception("invalid gam_ind")
         
 def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
     non_reduced_sisj = eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind)
+    # TESTER
+    typ = type(non_reduced_sisj[0][0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)
+        
     reduced_sisj = reduce_sisj_bind(non_reduced_sisj)
+    
+    # TESTER
+    typ = type(reduced_sisj[0])
+    if typ != DATA_TYPE:
+        raise Exception("data tpye is : ", typ)
+        
     return reduced_sisj
-                        
+          
+    
+import psutil
+import os
+
+
+
+
 def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
     # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix    
     print(" I USING DATA TYPE " + str(DATA_TYPE))
+    
+            
+    process = psutil.Process(os.getpid())
+    base_mem_usage = process.memory_info().rss#/1e6
+    print("top of func mem use: ", base_mem_usage)
+
 #     start_time = time.time()
     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
     [marks_1, marks_2] = poly_marks
@@ -614,11 +707,22 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
             s_bnd = np.zeros(6)
             for ib in range(n_bind*3):
                 s_bnd[ib] = s_bind_soln_arr[ib][np.where(mu1_array == mu[0]), np.where(mu2_array== mu[1])][0][0]
+            
+            process = psutil.Process(os.getpid())
+            base_memory_usage = process.memory_info().rss#/1e6
 
-
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                cc_red = executor.submit(eval_and_reduce_cc, len_marks_1).result()
-
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 cc_red = executor.submit(eval_and_reduce_cc, len_marks_1).result()
+#             mem11 = process.memory_info().rss#/1e6
+#             print("size of cc_red: ", cc_red.nbytes)
+#             print("mem change from first subprocess: ", (mem11 - base_memory_usage))
+#             print("overall mem used: ", mem11)
+            
+            cc_red = eval_and_reduce_cc(len_marks_1)
+            mem11 = process.memory_info().rss#/1e6
+            print("size of cc_red: ", cc_red.nbytes)
+            print("mem change from cc_red, w/o subprocess: ", (mem11 - base_memory_usage))
+            
             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
                 s_cgam0_red = executor.submit(eval_and_reduce_cgam, s_bnd, poly_marks, 0).result()
 

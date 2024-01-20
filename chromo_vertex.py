@@ -430,8 +430,10 @@ def reduce_sisj_bind(sisj_bind):
     sisj_tens = np.zeros(M)
     
     ind = np.arange(0,M,1)
-    ind_mesh = np.meshgrid(ind, ind)
-    dist = np.abs(ind_mesh[0] - ind_mesh[1])
+#     ind_mesh = np.meshgrid(ind, ind)
+#     dist = np.abs(ind_mesh[0] - ind_mesh[1])
+    dist = np.abs(ind[:, None] - ind)
+    
 #     for d in range(M):
 # #         print(d)
 #         sisj_tens[d] = np.sum(sisj_bind[np.where(dist==d)])
