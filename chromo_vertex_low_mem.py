@@ -564,9 +564,9 @@ def eval_and_reduce_cc(len_marks_1):
     
     ind = np.arange(0,M,1)
     
-    dist = np.abs(ind[:, None] - ind)
+#     dist = np.abs(ind[:, None] - ind)
 
-    np.add.at(sisj_tens, dist, np.ones((len_marks_1, len_marks_1), dtype = np.int8))
+    np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.ones((len_marks_1, len_marks_1), dtype = np.int8))
      
     return sisj_tens
 
@@ -582,9 +582,9 @@ def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
 
         ind = np.arange(0,M,1)
 
-        dist = np.abs(ind[:, None] - ind)
+#         dist = np.abs(ind[:, None] - ind)
 
-        np.add.at(sisj_tens, dist, s_bnd[np.tile(marks_1, (len(marks_1),1))])
+        np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_1, (len(marks_1),1))])
             
         return sisj_tens
     elif gam_ind == 1:
@@ -594,9 +594,9 @@ def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
 
         ind = np.arange(0,M,1)
 
-        dist = np.abs(ind[:, None] - ind)
+#         dist = np.abs(ind[:, None] - ind)
 
-        np.add.at(sisj_tens, dist, s_bnd[np.tile(marks_2, (len(marks_2),1)).T + 3])
+        np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_2, (len(marks_2),1)).T + 3])
         
         return sisj_tens
     else:
@@ -644,9 +644,9 @@ def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
     
     ind = np.arange(0,M,1)
         
-    dist = np.abs(ind[:, None] - ind)
+#     dist = np.abs(ind[:, None] - ind)
 
-    np.add.at(sisj_tens, dist, (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
+    np.add.at(sisj_tens, np.abs(ind[:, None] - ind), (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
     + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
     + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
 )   
@@ -682,8 +682,8 @@ def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
         
 #     return reduced_sisj
 
-import psutil
-import os
+# import psutil
+# import os
 
 
 def calc_sfcc(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30)):
