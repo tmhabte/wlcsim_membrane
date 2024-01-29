@@ -540,38 +540,64 @@ def eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind):
     
 #     return sisj_tens
 
-def eval_and_reduce_cc(len_marks_1):
-#     process = psutil.Process(os.getpid())
-#     base_mems = process.memory_info().rss#/1e6
-#     print("--------------------------------------------------------------")
-#     print("starting mem usage in subprocess: ", base_memory_usage)
+# def eval_and_reduce_cc(len_marks_1):
+#     # reduce rank 2 tensor to rank 1
+#     M = len_marks_1
+#     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
     
-#     cc = np.ones((len_marks_1, len_marks_1), dtype = np.int8)
+#     ind = np.arange(0,M,1)
     
-#     mem1 = process.memory_info().rss#/1e6
-#     print("cc mem: ", mem1 - base_mems)
-    
-#     cc_red = reduce_sisj_bind(cc)
-    
-#     mem2 = process.memory_info().rss#/1e6
-#     print("cc red func mem: ", mem2 - mem1)
-#     print("overall mem of eval_and_reduce_cc: ", mem2 - base_mems)
-#     print("---------------------------------------------------------------")
-    # TESTER
-    # reduce rank 2 tensor to rank 1
-    M = len_marks_1
-    sisj_tens = np.zeros(M, dtype = DATA_TYPE)
-    
-    ind = np.arange(0,M,1)
-    
-#     dist = np.abs(ind[:, None] - ind)
+# #     dist = np.abs(ind[:, None] - ind)
 
-    np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.ones((len_marks_1, len_marks_1), dtype = np.int8))
+#     np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.ones((len_marks_1, len_marks_1), dtype = np.int8))
      
-    return sisj_tens
+#     return sisj_tens
 
+#simplified!
+
+def eval_and_reduce_cc(len_marks_1):
+#     print("simplified cc")
+    res = np.zeros(len_marks_1)
+    res[0] = len_marks_1
+    res[1:] = np.arange(2, 2*(len_marks_1), 2)[::-1]
+    return res
+
+# def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
+#     print("non-simp cgam OLD")
+#     [marks_1, marks_2] = poly_marks
+    
+#     s_bnd = s_bnd.astype(DATA_TYPE)
+#     if gam_ind == 0:
+#         M = len(marks_1)
+        
+#         sisj_tens = np.zeros(M, dtype = DATA_TYPE)
+
+#         ind = np.arange(0,M,1)
+
+# #         dist = np.abs(ind[:, None] - ind)
+
+#         np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_1, (len(marks_1),1))])
+            
+#         return sisj_tens
+#     elif gam_ind == 1:
+#         M = len(marks_1)
+        
+#         sisj_tens = np.zeros(M, dtype = DATA_TYPE)
+
+#         ind = np.arange(0,M,1)
+
+# #         dist = np.abs(ind[:, None] - ind)
+
+#         np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_2, (len(marks_2),1)).T + 3])
+        
+#         return sisj_tens
+#     else:
+#         raise Exception("invalid gam_ind")
+
+#low mem and faster!!
 
 def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
+    print("simplified cgam")
     [marks_1, marks_2] = poly_marks
     
     s_bnd = s_bnd.astype(DATA_TYPE)
@@ -581,28 +607,29 @@ def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
         sisj_tens = np.zeros(M, dtype = DATA_TYPE)
 
         ind = np.arange(0,M,1)
-
-#         dist = np.abs(ind[:, None] - ind)
-
-        np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_1, (len(marks_1),1))])
-            
-        return sisj_tens
+        s_bnd_vec = s_bnd[marks_1] 
+        for i in range(M):
+            if i == 0:
+                sisj_tens[i] = np.sum(s_bnd_vec)
+            else:
+                sisj_tens[-i] = np.sum(s_bnd_vec[:i]) + np.sum(s_bnd_vec[-i:])
+                
     elif gam_ind == 1:
-        M = len(marks_1)
+        M = len(marks_2)
         
         sisj_tens = np.zeros(M, dtype = DATA_TYPE)
 
         ind = np.arange(0,M,1)
+        s_bnd_vec = s_bnd[np.array(marks_2)+3] 
+        for i in range(M):
+            if i == 0:
+                sisj_tens[i] = np.sum(s_bnd_vec)
+            else:
+                sisj_tens[-i] = np.sum(s_bnd_vec[:i]) + np.sum(s_bnd_vec[-i:])
+          
+    return sisj_tens
 
-#         dist = np.abs(ind[:, None] - ind)
-
-        np.add.at(sisj_tens, np.abs(ind[:, None] - ind), s_bnd[np.tile(marks_2, (len(marks_2),1)).T + 3])
-        
-        return sisj_tens
-    else:
-        raise Exception("invalid gam_ind")
-        
-def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
+def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind,):
     
 #     process = psutil.Process(os.getpid())
 #     base_m = process.memory_info().rss#/1e6
@@ -650,7 +677,8 @@ def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
     + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
     + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
 )   
-        
+
+#     queue.put(sisj_tens)
     return sisj_tens
           
 # def LOW_MEM_eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
@@ -682,8 +710,8 @@ def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
         
 #     return reduced_sisj
 
-# import psutil
-# import os
+import psutil
+import os
 
 
 def calc_sfcc(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30)):
@@ -728,6 +756,8 @@ def calc_sfcc(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1
 #             print("mu done!")
     return sf_mat
 
+# import multiprocessing
+
 def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
     # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix    
     print(" I USING DATA TYPE " + str(DATA_TYPE))
@@ -761,32 +791,69 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 #             process = psutil.Process(os.getpid())
 #             base_memory_usage = process.memory_info().rss#/1e6
 
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                cc_red = executor.submit(eval_and_reduce_cc, len_marks_1).result()
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 cc_red = executor.submit(eval_and_reduce_cc, len_marks_1).result()
 #             mem11 = process.memory_info().rss#/1e6
 #             print("size of cc_red: ", cc_red.nbytes)
 #             print("mem change from first subprocess: ", (mem11 - base_memory_usage))
 #             print("overall mem used: ", mem11)
             
-#             cc_red = eval_and_reduce_cc(len_marks_1)
+            cc_red = eval_and_reduce_cc(len_marks_1)
 #             mem11 = process.memory_info().rss#/1e6
 #             print("size of cc_red: ", cc_red.nbytes)
 #             print("mem change from cc_red, w/o subprocess: ", (mem11 - base_memory_usage))
             
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                s_cgam0_red = executor.submit(eval_and_reduce_cgam, s_bnd, poly_marks, 0).result()
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 s_cgam0_red = executor.submit(eval_and_reduce_cgam, s_bnd, poly_marks, 0).result()
 
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                s_cgam1_red = executor.submit(eval_and_reduce_cgam, s_bnd, poly_marks, 1).result()
-            
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 s_cgam1_red = executor.submit(eval_and_reduce_cgam, s_bnd, poly_marks, 1).result()
+
+            s_cgam0_red = eval_and_reduce_cgam(s_bnd, poly_marks, 0)
+
+            s_cgam1_red = eval_and_reduce_cgam(s_bnd, poly_marks, 1)
+
+#             print("GOT to start of section")
 #             process = psutil.Process(os.getpid())
 #             base_memory_usage = process.memory_info().rss#/1e6            
+
             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                sisj_AA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 0).result()
-#             sisj_AA_red = eval_and_reduce_sisj_bind(chrom, f_bars, mu, 0, 0)
+                sisj_AA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 0,).result()
+            
 #             mem11 = process.memory_info().rss#/1e6
 #             print("size of sisj_red: ", sisj_AA_red.nbytes)
-#             print("mem change from function: ", (mem11 - base_memory_usage))
+#             print("mem change from NEW subprocess: ", (mem11 - base_memory_usage))
+            
+#             sisj_AA_red = eval_and_reduce_sisj_bind(chrom, f_bars, mu, 0, 0)
+            
+#             low_mem11 = process.memory_info().rss#/1e6
+#             print("size of sisj_red: ", sisj_AA_red.nbytes) 
+#             print("mem change from low_mem function: ", (low_mem11 - mem11))
+    
+#             queue = multiprocessing.Queue()
+#             queue = multiprocessing.Manager().Queue()
+#             print("created queue")
+#             p = multiprocessing.Process(target=eval_and_reduce_sisj_bind, args=(chrom, f_bars, mu, 0, 0,))
+#             p.start()
+#             p.join()
+#             print("killed process")
+# #             sisj_AA_red = queue.get()
+#             print("got queue result")
+#     manager = multiprocessing.Manager()
+#     return_dict = manager.dict()
+#     jobs = []
+#     for i in range(5):
+#         p = multiprocessing.Process(target=worker, args=(i, return_dict))
+#         jobs.append(p)
+#         p.start()
+
+#     for proc in jobs:
+#         proc.join()
+#     print(return_dict.values())
+    
+#             mem11 = process.memory_info().rss#/1e6
+# #             print("size of sisj_red: ", sisj_AA_red.nbytes)
+#             print("mem change from NEW subprocess: ", (mem11 - base_memory_usage))
 # #             print("overall mem used so far: ", mem11)
 #             print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 #             low_mem_sisj_AA_red = LOW_MEM_eval_and_reduce_sisj_bind(chrom, f_bars, mu, 0, 0)
@@ -798,9 +865,11 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 
             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
                 sisj_AB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 1).result()
-
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                sisj_BA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 0).result()
+        
+            sisj_BA_red = sisj_AB_red
+            print("BA = AB")
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 sisj_BA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 0).result()
 
             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
                 sisj_BB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 1).result()
