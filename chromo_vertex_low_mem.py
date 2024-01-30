@@ -738,7 +738,6 @@ def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
     s_bnd_A = s_bnd[np.array(poly_marks[gam1_ind])+3*gam1_ind]
     s_bnd_B = s_bnd[np.array(poly_marks[gam2_ind])+3*gam2_ind]
     
-    
     M = len(marks_1)
     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
     
@@ -746,16 +745,20 @@ def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
 
 #     np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.outer(s_bnd_A, s_bnd_B))   
 
+#     for i in range(M):
+#         dist_row = np.abs(ind - i)
+#         np.add.at(sisj_tens, dist_row, (s_bnd_A[i] * s_bnd_B))  
+
     for i in range(M):
-        dist_row = np.abs(ind - i)
-        np.add.at(sisj_tens, dist_row, (s_bnd_A[i] * s_bnd_B))  
-#         add_at(sisj_tens, np.abs(ind - i), (s_bnd_A[i] * s_bnd_B))
-#         if i == M//2:
-#             print("halfway")
+        if i == 0:
+            sisj_tens[i] = np.sum(s_bnd_A * s_bnd_B)
+        else:
+            sisj_tens[-i] = np.sum(s_bnd_A[:i]*s_bnd_B[-i:]) + np.sum(s_bnd_A[-i:]*s_bnd_B[:i])
+          
+        if i==M//100:
+            print("1/100")
         if i == M//1000:
-            print("one thousdamdth")
-        if i == M//100:
-            print("one hundredth")
+            print("1/1000")
     return sisj_tens
 
 import psutil
