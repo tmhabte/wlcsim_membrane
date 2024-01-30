@@ -319,53 +319,53 @@ def calc_binding_states(chrom):
 
 # need to produce rank 2 tensor that, given two protein types, 
 # find avg of product of s for index ij
-def eval_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
-    '''
-    poly marks (array of arrays) contains an array of marks per nucleosome for each protein type
-    gam1_ind (int) is the index of first protein
-    gam2_ind (int) is the index of second protein
-    '''
-    [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+# def eval_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
+#     '''
+#     poly marks (array of arrays) contains an array of marks per nucleosome for each protein type
+#     gam1_ind (int) is the index of first protein
+#     gam2_ind (int) is the index of second protein
+#     '''
+#     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
 
-    n_bind = len(mu)
-    # evaluate eqn 85 for each index ij
+#     n_bind = len(mu)
+#     # evaluate eqn 85 for each index ij
  
-    phi_bind = phi_c * np.array(f_bars)
+#     phi_bind = phi_c * np.array(f_bars)
 
-    erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
+#     erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
 
-    coef1 = -erg_int[gam1_ind] + mu[gam1_ind] 
-    coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
+#     coef1 = -erg_int[gam1_ind] + mu[gam1_ind] 
+#     coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
     
-#     coef1 = -erg_int[gam1_ind] + mu[gam2_ind] 
-#     coef2 = -erg_int[gam2_ind] + mu[gam1_ind]
+# #     coef1 = -erg_int[gam1_ind] + mu[gam2_ind] 
+# #     coef2 = -erg_int[gam2_ind] + mu[gam1_ind]
     
-    #make vector form of f_bind
-    f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
-    f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+#     #make vector form of f_bind
+#     f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+#     f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
     
-    #combine coef and f_bind to create 4 dif energies needed
-#     - each should be rank 2 tensors
+#     #combine coef and f_bind to create 4 dif energies needed
+# #     - each should be rank 2 tensors
     
-    exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1)  #energy at each nucleosome if one gamma 1 protein bound
-    exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2)
-    exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1)
-    exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2)
+#     exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1)  #energy at each nucleosome if one gamma 1 protein bound
+#     exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2)
+#     exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1)
+#     exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2)
     
-    exp_11 = np.outer(exp_g1_s1, exp_g2_s1) #getting combined probability at each nucleosome pair
-    exp_12 = np.outer(exp_g1_s1, exp_g2_s2)
-    exp_21 = np.outer(exp_g1_s2, exp_g2_s1)
-    exp_22 = np.outer(exp_g1_s2, exp_g2_s2)
+#     exp_11 = np.outer(exp_g1_s1, exp_g2_s1) #getting combined probability at each nucleosome pair
+#     exp_12 = np.outer(exp_g1_s1, exp_g2_s2)
+#     exp_21 = np.outer(exp_g1_s2, exp_g2_s1)
+#     exp_22 = np.outer(exp_g1_s2, exp_g2_s2)
     
-    #  (0,0)                (1,0)                                      (0,1)
-    q = 1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1))) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1))).T\
-    + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1))) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1))).T\
-    + (exp_11 + exp_12 + exp_21 + exp_22) 
-    #calculate average matrix (eq 85)
-    sisj_bind = (exp_11 + 2*exp_12 + 2*exp_21 + 4*exp_22) / q
-    return sisj_bind 
+#     #  (0,0)                (1,0)                                      (0,1)
+#     q = 1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1))) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1))).T\
+#     + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1))) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1))).T\
+#     + (exp_11 + exp_12 + exp_21 + exp_22) 
+#     #calculate average matrix (eq 85)
+#     sisj_bind = (exp_11 + 2*exp_12 + 2*exp_21 + 4*exp_22) / q
+#     return sisj_bind 
 
 
 
@@ -487,45 +487,45 @@ def calc_sf2_chromo_shlk(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
 
 import concurrent.futures
 
-def eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind):
-    '''
-    poly marks (array of arrays) contains an array of marks per nucleosome for each protein type
-    gam1_ind (int) is the index of first protein
-    gam2_ind (int) is the index of second protein
+# def eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind):
+#     '''
+#     poly marks (array of arrays) contains an array of marks per nucleosome for each protein type
+#     gam1_ind (int) is the index of first protein
+#     gam2_ind (int) is the index of second protein
     
-    returns rank 1 tensor to describe sisj of monomers separated by DEL. 
-    '''
-    print("Less mem eval sisj bind!")
-    [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+#     returns rank 1 tensor to describe sisj of monomers separated by DEL. 
+#     '''
+#     print("Less mem eval sisj bind!")
+#     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
 
-    n_bind = len(mu)
-    # evaluate eqn 85 for each index ij
+#     n_bind = len(mu)
+#     # evaluate eqn 85 for each index ij
  
-    phi_bind = phi_c * np.array(f_bars)
+#     phi_bind = phi_c * np.array(f_bars)
 
-    erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
+#     erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
     
-    coef1 = -erg_int[gam1_ind] + mu[gam1_ind]
-    coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
+#     coef1 = -erg_int[gam1_ind] + mu[gam1_ind]
+#     coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
     
     
-    #make vector form of f_bind
-    f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
-    f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+#     #make vector form of f_bind
+#     f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+#     f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
     
-    #combine coef and f_bind to create 4 dif energies needed
-#     - each should be rank 2 tensors
+#     #combine coef and f_bind to create 4 dif energies needed
+# #     - each should be rank 2 tensors
     
-    exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1).astype(DATA_TYPE)  #energy at each nucleosome if one gamma 1 protein bound
-    exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2).astype(DATA_TYPE)
-    exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1).astype(DATA_TYPE)
-    exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2).astype(DATA_TYPE)
+#     exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1).astype(DATA_TYPE)  #energy at each nucleosome if one gamma 1 protein bound
+#     exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2).astype(DATA_TYPE)
+#     exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1).astype(DATA_TYPE)
+#     exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2).astype(DATA_TYPE)
 
-    return (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
-    + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
-    + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
+#     return (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
+#     + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
+#     + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
 
 # def reduce_sisj_bind(sisj_bind):
 #     # reduce rank 2 tensor to rank 1
@@ -629,86 +629,134 @@ def eval_and_reduce_cgam(s_bnd, poly_marks, gam_ind):
           
     return sisj_tens
 
-def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind,):
+# def eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind,):
+    
+# #     process = psutil.Process(os.getpid())
+# #     base_m = process.memory_info().rss#/1e6
+# #     print("inside eval and reduce--------------------------------------------------------------")
+
+
+#     print("Less mem eval sisj bind!")
+#     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+#     n_bind = len(mu)
+#     # evaluate eqn 85 for each index ij
+ 
+#     phi_bind = phi_c * np.array(f_bars)
+
+#     erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
+    
+#     coef1 = -erg_int[gam1_ind] + mu[gam1_ind]
+#     coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
+    
+    
+#     #make vector form of f_bind
+#     f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
+#     f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+#     f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
+    
+#     #combine coef and f_bind to create 4 dif energies needed
+# #     - each should be rank 2 tensors
+    
+#     exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1).astype(DATA_TYPE)  #energy at each nucleosome if one gamma 1 protein bound
+#     exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2).astype(DATA_TYPE)
+#     exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1).astype(DATA_TYPE)
+#     exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2).astype(DATA_TYPE)
+
+    
+#     [marks_1, marks_2] = poly_marks
+#     M = len(marks_1)
+#     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
+    
+#     ind = np.arange(0,M,1)
+        
+# #     dist = np.abs(ind[:, None] - ind)
+
+#     np.add.at(sisj_tens, np.abs(ind[:, None] - ind), (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
+#     + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
+#     + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
+# )   
+
+    
+# #     queue.put(sisj_tens)
+#     return sisj_tens
+          
+# def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
+    
+# #     process = psutil.Process(os.getpid())
+# #     base_m = process.memory_info().rss#/1e6
+# #     print("inside eval and reduce--------------------------------------------------------------")
+
+
+#     print("SIMPED eval sisj bind!")
+#     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+#     [marks_1, marks_2] = poly_marks
+    
+# #     if gam1_ind == 1:
+# #         marks_1 = np.array(marks_1) + 3
+        
+# #     if gam2_ind == 1:
+# #         marks_2 = np.array(marks_2) + 3
+
+#     s_bnd_A = s_bnd[np.array(poly_marks[gam1_ind])+3*gam1_ind]
+#     s_bnd_B = s_bnd[np.array(poly_marks[gam2_ind])+3*gam2_ind]
+    
+    
+#     M = len(marks_1)
+#     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
+    
+#     ind = np.arange(0,M,1)
+
+#     np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.outer(s_bnd_A, s_bnd_B))   
+
+# #     for i in range(M):
+        
+# # #     queue.put(sisj_tens)
+#     return sisj_tens
+
+def add_at(A, indices, B):
+    sorted_indices = np.argsort(indices)
+    uniques, run_lengths = np.unique(indices[sorted_indices], return_counts=True)
+    for i, length, end in zip(uniques, run_lengths, run_lengths.cumsum()):
+        A[i] += B[sorted_indices[end-length:end]].sum(axis=0)
+        
+def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
     
 #     process = psutil.Process(os.getpid())
 #     base_m = process.memory_info().rss#/1e6
 #     print("inside eval and reduce--------------------------------------------------------------")
 
 
-    print("Less mem eval sisj bind!")
+    print("SIMPED eval sisj bind!")
     [n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
 
-    n_bind = len(mu)
-    # evaluate eqn 85 for each index ij
- 
-    phi_bind = phi_c * np.array(f_bars)
-
-    erg_int = np.matmul(phi_bind, v_int) #sum over gamma 2 of int and phi and f
-    
-    coef1 = -erg_int[gam1_ind] + mu[gam1_ind]
-    coef2 = -erg_int[gam2_ind] + mu[gam2_ind]
-    
-    
-    #make vector form of f_bind
-    f_bind_g1_s1 = eval_f_bind_vec(1, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g1_s2 = eval_f_bind_vec(2, poly_marks[gam1_ind], e_m[gam1_ind], v_int[gam1_ind,gam1_ind])
-    f_bind_g2_s1 = eval_f_bind_vec(1, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
-    f_bind_g2_s2 = eval_f_bind_vec(2, poly_marks[gam2_ind], e_m[gam2_ind], v_int[gam2_ind,gam2_ind])
-    
-    #combine coef and f_bind to create 4 dif energies needed
-#     - each should be rank 2 tensors
-    
-    exp_g1_s1 = np.exp(coef1 - f_bind_g1_s1).astype(DATA_TYPE)  #energy at each nucleosome if one gamma 1 protein bound
-    exp_g1_s2 = np.exp(2*coef1 - f_bind_g1_s2).astype(DATA_TYPE)
-    exp_g2_s1 = np.exp(coef2 - f_bind_g2_s1).astype(DATA_TYPE)
-    exp_g2_s2 = np.exp(2*coef2 - f_bind_g2_s2).astype(DATA_TYPE)
-
-    
     [marks_1, marks_2] = poly_marks
+
+
+    s_bnd_A = s_bnd[np.array(poly_marks[gam1_ind])+3*gam1_ind]
+    s_bnd_B = s_bnd[np.array(poly_marks[gam2_ind])+3*gam2_ind]
+    
+    
     M = len(marks_1)
     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
     
     ind = np.arange(0,M,1)
-        
-#     dist = np.abs(ind[:, None] - ind)
 
-    np.add.at(sisj_tens, np.abs(ind[:, None] - ind), (np.outer(exp_g1_s1, exp_g2_s1) + 2*np.outer(exp_g1_s1, exp_g2_s2) + 2*np.outer(exp_g1_s2, exp_g2_s1) + 4*np.outer(exp_g1_s2, exp_g2_s2) ) / (1 + np.outer(exp_g1_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s1, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T\
-    + np.outer(exp_g1_s2,np.ones(len(exp_g1_s1), dtype = DATA_TYPE)) + np.outer(exp_g2_s2, np.ones(len(exp_g1_s1), dtype = DATA_TYPE)).T \
-    + np.outer(exp_g1_s1, exp_g2_s1) + np.outer(exp_g1_s1, exp_g2_s2) +  np.outer(exp_g1_s2, exp_g2_s1) + np.outer(exp_g1_s2, exp_g2_s2))
-)   
+#     np.add.at(sisj_tens, np.abs(ind[:, None] - ind), np.outer(s_bnd_A, s_bnd_B))   
 
-#     queue.put(sisj_tens)
+    for i in range(M):
+        dist_row = np.abs(ind - i)
+        np.add.at(sisj_tens, dist_row, (s_bnd_A[i] * s_bnd_B))  
+#         add_at(sisj_tens, np.abs(ind - i), (s_bnd_A[i] * s_bnd_B))
+#         if i == M//2:
+#             print("halfway")
+        if i == M//1000:
+            print("one thousdamdth")
+        if i == M//100:
+            print("one hundredth")
     return sisj_tens
-          
-# def LOW_MEM_eval_and_reduce_sisj_bind(chrom, f_bars, mu, gam1_ind, gam2_ind):
-    
-# #     process = psutil.Process(os.getpid())
-# #     base_m = process.memory_info().rss#/1e6
-# #     print("inside lowmem eval and reduce--------------------------------------------------------------")
-
-
-    
-#     non_reduced_sisj = LOW_MEM_eval_sisj_bind_shlk(chrom, f_bars, mu, gam1_ind, gam2_ind)
-# #     mem1 = process.memory_info().rss#/1e6
-# #     print("low mem sisj func mem: ", mem1 - base_m)
-#     # TESTER
-#     typ = type(non_reduced_sisj[0][0])
-#     if typ != DATA_TYPE:
-#         raise Exception("data tpye is : ", typ)
-        
-#     reduced_sisj = reduce_sisj_bind(non_reduced_sisj)
-    
-# #     mem2 = process.memory_info().rss#/1e6
-# #     print("red func mem: ", mem2 - mem1)
-# #     print("overall mem of eval_and_reduce_sisj: ", mem2 - base_m)
-# #     print("---------------------------------------------------------------")    
-#     # TESTER
-#     typ = type(reduced_sisj[0])
-#     if typ != DATA_TYPE:
-#         raise Exception("data tpye is : ", typ)
-        
-#     return reduced_sisj
 
 import psutil
 import os
@@ -817,9 +865,21 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 #             process = psutil.Process(os.getpid())
 #             base_memory_usage = process.memory_info().rss#/1e6            
 
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                sisj_AA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 0,).result()
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 sisj_AA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 0,).result()
+
+            sisj_AA_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd, 0, 0,)
             
+#             sisj_AA = eval_sisj_bind(chrom, f_bars, mu, 0, 0)
+#             print("sisj AA: ")
+#             print(sisj_AA)
+            
+            
+#             print("s_bnd A:")
+#             print(s_bnd[marks_1])
+            
+#             print("s_bnd_A outer:")
+#             print(np.outer(s_bnd[marks_1], s_bnd[marks_1]))
 #             mem11 = process.memory_info().rss#/1e6
 #             print("size of sisj_red: ", sisj_AA_red.nbytes)
 #             print("mem change from NEW subprocess: ", (mem11 - base_memory_usage))
@@ -863,17 +923,18 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 # #             print("overall mem used: ", low_mem11)
 #             print( "same?: ", np.sum(sisj_AA_red == low_mem_sisj_AA_red)/len(sisj_AA_red))
 
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                sisj_AB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 1).result()
+#             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#                 sisj_AB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 0, 1).result()
+
+            sisj_AB_red = eval_and_reduce_sisj_bind_simp( chrom, s_bnd, 0, 1)
         
             sisj_BA_red = sisj_AB_red
             print("BA = AB")
+
 #             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-#                 sisj_BA_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 0).result()
-
-            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                sisj_BB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 1).result()
-
+#                 sisj_BB_red = executor.submit(eval_and_reduce_sisj_bind, chrom, f_bars, mu, 1, 1).result()
+                
+            sisj_BB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd, 1, 1)
             
             M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
 
