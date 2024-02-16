@@ -12,6 +12,7 @@ Spinodal
 
 """
 import numpy as np
+from scipy import signal
 
 # DATA_TYPE = np.float16
 # DATA_TYPE = np.float32
@@ -173,7 +174,7 @@ def calc_binding_states(chrom):
     mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     f_gam_arr = np.arange(-0.001,2.002,0.001)
-    f_gam_arr = np.arange(-0.01,2.02,0.01)
+#     f_gam_arr = np.arange(-0.01,2.02,0.01)
 
     f_gam_soln_arr = np.zeros((n_bind, len(mu1_array), len(mu2_array)))
 
@@ -446,7 +447,8 @@ def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
 #         sisj_tens[-(i+1)] = np.sum(s_bnd_A[:(i+1)]*s_bnd_B[-(i+1):]) + np.sum(s_bnd_A[-(i+1):]*s_bnd_B[:(i+1)])
 
     sisj_tens[0] = np.sum(s_bnd_A * s_bnd_B)
-    conv = np.convolve(s_bnd_A, s_bnd_B[::-1])
+#     conv = np.convolve(s_bnd_A, s_bnd_B[::-1])
+    conv = signal.convolve(s_bnd_A, s_bnd_B[::-1])
     sisj_tens[1:] = conv[:M-1][::-1] + conv[:M-1:-1][::-1]
     
     return sisj_tens
