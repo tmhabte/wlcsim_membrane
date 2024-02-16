@@ -173,7 +173,7 @@ def calc_binding_states(chrom):
     mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     f_gam_arr = np.arange(-0.001,2.002,0.001)
-#     f_gam_arr = np.arange(-0.01,2.02,0.01)
+    f_gam_arr = np.arange(-0.01,2.02,0.01)
 
     f_gam_soln_arr = np.zeros((n_bind, len(mu1_array), len(mu2_array)))
 
@@ -431,17 +431,24 @@ def eval_and_reduce_sisj_bind_simp(chrom, s_bnd, gam1_ind, gam2_ind,):
     M = len(marks_1)
     sisj_tens = np.zeros(M, dtype = DATA_TYPE)
     
-    ind = np.arange(0,M,1)
+#     ind = np.arange(0,M,1)
 
 #     for i in range(M):
 #         if i == 0:
 #             sisj_tens[i] = np.sum(s_bnd_A * s_bnd_B)
 #         else:
 #             sisj_tens[-i] = np.sum(s_bnd_A[:i]*s_bnd_B[-i:]) + np.sum(s_bnd_A[-i:]*s_bnd_B[:i])
-    sisj_tens[0] = np.sum(s_bnd_A * s_bnd_B)
-    for i in range(M-1):
-        sisj_tens[-(i+1)] = np.sum(s_bnd_A[:(i+1)]*s_bnd_B[-(i+1):]) + np.sum(s_bnd_A[-(i+1):]*s_bnd_B[:(i+1)])
 
+#     ind = np.arange(0,M,1)
+    
+#     sisj_tens[0] = np.sum(s_bnd_A * s_bnd_B)
+#     for i in range(M-1):
+#         sisj_tens[-(i+1)] = np.sum(s_bnd_A[:(i+1)]*s_bnd_B[-(i+1):]) + np.sum(s_bnd_A[-(i+1):]*s_bnd_B[:(i+1)])
+
+    sisj_tens[0] = np.sum(s_bnd_A * s_bnd_B)
+    conv = np.convolve(s_bnd_A, s_bnd_B[::-1])
+    sisj_tens[1:] = conv[:M-1][::-1] + conv[:M-1:-1][::-1]
+    
     return sisj_tens
 
 import psutil
