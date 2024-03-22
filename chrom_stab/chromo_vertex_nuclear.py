@@ -27,7 +27,8 @@ def def_chrom(n_bind, v_int, chi, e_m, phi_c, poly_marks, mu_max, mu_min, del_mu
                         (np.array(marks_2)==0).sum(),(np.array(marks_2)==1).sum(),(np.array(marks_2)==2).sum()])/len(marks_1)
     
     if chrom_type == "DNA":
-        l_p = 53 # 53 nm
+#         l_p = 53 # 53 nm bare DNA
+        l_p = 20 # 20 nm chromosomal DNA
         bp_p_b = 45 # base pairs per bond
         nm_p_bp = 0.34 # nanometetrs per base pair
         b = l_p * 2 #kuhn length
@@ -370,8 +371,9 @@ def calc_sf2_chromo_shlk(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
         
     return S2_AA_arr*N**2, S2_AB_arr*N**2, S2_BA_arr*N**2, S2_BB_arr*N**2, S2_cgam0_arr*N**2, S2_cgam1_arr*N**2, S2_cc_arr*N**2
 
-def inc_gamma(a, x):
-    return sp.special.exp1(x) if a == 0 else sp.special.gamma(a)*sp.special.gammaincc(a, x)
+def inc_gamma(a, x): 
+    # got rid of a = 0 condition!
+    return sp.special.gamma(a)*sp.special.gammaincc(a, x)
 
 def erf(n):
     return sp.special.erf(n)
@@ -398,7 +400,7 @@ def calc_sf2_nuclear(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
     S2_cc_arr = np.zeros(nk)
     
     bp_per_nuc = 190 # bp per nucleosome
-    nm_per_bp = 0.034 
+    nm_per_bp = 0.34 
     lower_cutoff = 28.89 * 1000 # bp, s1*, from Rubenstein
     upper_cutoff = 399.12 * 1000 # bp, s2*
 
@@ -437,25 +439,32 @@ def calc_sf2_nuclear(chrom, M2s, k_vec = np.logspace(-3, -1, 30)):
         
         
         index = (np.arange(0, M, 1) * bp_per_nuc > lower_cutoff) * (np.arange(0, M, 1) * bp_per_nuc <= upper_cutoff)
+        dlta = delta[index]
+
         x_m = (1/6) * N_m**(2/3) * b**2 * k**2 * (lc_kuhn)**(1/3)
         
 
-        gammas = -6*inc_gamma(2, delta**(2/3)*x_m) + 3*inc_gamma(2, (delta-1)**(2/3)*x_m) \
-                + 3*inc_gamma(2, (delta+1)**(2/3)*x_m)
-        erfs = np.pi**0.5 * (delta - 1)*x_m**(3/2)*erf((delta-1)**(1/3)*x_m**0.5) \
-                - 2*np.pi**0.5 * (delta)*x_m**(3/2)*erf((delta)**(1/3)*x_m**0.5) \
-                + np.pi**0.5 * (delta)*x_m**(3/2)*erf((delta+1)**(1/3)*x_m**0.5) \
-                + np.pi**0.5 * x_m**(3/2)*erf((delta+1)**(1/3)*x_m**0.5)
-        neiths = -2*(delta)**(2/3)*x_m*np.exp(-delta**(2/3)*x_m) - 2*np.exp(-delta**(2/3)*x_m)\
-                + (delta - 1)**(2/3) * x_m * np.exp(-(delta-1)**(2/3)*x_m) \
-                + (delta + 1)**(2/3) * x_m * np.exp(-(delta+1)**(2/3)*x_m) \
-                + np.exp(-(delta-1)**(2/3)*x_m) + np.exp(-(delta+1)**(2/3)*x_m)
+        gammas = -6*inc_gamma(2, dlta**(2/3)*x_m) + 3*inc_gamma(2, (dlta-1)**(2/3)*x_m) \
+                + 3*inc_gamma(2, (dlta+1)**(2/3)*x_m)
+        erfs = np.pi**0.5 * (dlta - 1)*x_m**(3/2)*erf((dlta-1)**(1/3)*x_m**0.5) \
+                - 2*np.pi**0.5 * (dlta)*x_m**(3/2)*erf((dlta)**(1/3)*x_m**0.5) \
+                + np.pi**0.5 * (dlta)*x_m**(3/2)*erf((dlta+1)**(1/3)*x_m**0.5) \
+                + np.pi**0.5 * x_m**(3/2)*erf((dlta+1)**(1/3)*x_m**0.5)
+        neiths = -2*(dlta)**(2/3)*x_m*np.exp(-dlta**(2/3)*x_m) - 2*np.exp(-dlta**(2/3)*x_m)\
+                + (dlta - 1)**(2/3) * x_m * np.exp(-(dlta-1)**(2/3)*x_m) \
+                + (dlta + 1)**(2/3) * x_m * np.exp(-(dlta+1)**(2/3)*x_m) \
+                + np.exp(-(dlta-1)**(2/3)*x_m) + np.exp(-(dlta+1)**(2/3)*x_m)
+
 
         integral = 3/(4*x_m**3) * (gammas + erfs + neiths)
 #         integral = ((np.exp(x_m)-1)**2 *  np.exp(-(delta**(2/3)+1)*x_m)  ) /x_m**2   # rough scaling implementation
 
-
-        C[np.where((index) != 0)] += integral[np.where(index != 0)]
+        num_leading_zeros = np.sum((np.arange(0, M, 1) * bp_per_nuc <= lower_cutoff))
+        num_trailing_zeros = np.sum((np.arange(0, M, 1) * bp_per_nuc > upper_cutoff))
+        
+        integral = np.pad(integral, (num_leading_zeros,num_trailing_zeros))
+    
+        C[np.where((index) != 0)] += integral[np.where((index) != 0)]
         
         
         # if j1 - j2 > upper cutoff -> 1 scaling
@@ -614,7 +623,8 @@ def calc_sf_mats(chrom, f_gam_soln_arr, s_bind_soln_arr, k_vec = np.logspace(-3,
 
             
             for ik, k in enumerate(k_vec):
-                g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_chromo_shlk(chrom, M2s, [k]))
+#                 g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_chromo_shlk(chrom, M2s, [k]))
+                g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_nuclear(chrom, M2s, [k]))
                 
                 ss = 1-phi_c
                 S2_mat = 1/N**2 * np.array([[cc[0], 0, cg1[0], cg2[0]],\
