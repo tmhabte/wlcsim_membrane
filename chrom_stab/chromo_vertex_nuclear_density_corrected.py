@@ -129,25 +129,25 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
                 f_bind = 2*e_m_arr[1]+j_int_g2g2
         elif n_b_arr==[1,2]:
             if n_m == 0:
-                f_bind = 0+2*j_int_g1g2 +  -np.log(2)
+                f_bind = 0+2*j_int_g1g2 +  -np.log(2) +2*j_int_g1g2
             elif n_m == 1:
-                f_bind = e_m_arr[1]+2*j_int_g1g2 + -np.log(np.exp(-e_m_arr[0]) + 1)
+                f_bind = e_m_arr[1]+2*j_int_g1g2 + -np.log(np.exp(-e_m_arr[0]) + 1)  +2*j_int_g1g2
             elif n_m == 2:
-                f_bind = 2*e_m_arr[1]+2*j_int_g1g2 + -np.log(2) + e_m_arr[0]
+                f_bind = 2*e_m_arr[1]+2*j_int_g1g2 + -np.log(2) + e_m_arr[0]  +2*j_int_g1g2
         elif n_b_arr==[2,1]:
             if n_m == 0:
-                f_bind = 0+j_int_g1g1  -np.log(2)
+                f_bind = 0+j_int_g1g1  -np.log(2)  +2*j_int_g1g2
             elif n_m == 1:
-                f_bind = e_m_arr[0]+j_int_g1g1 -np.log(np.exp(-e_m_arr[1]) + 1)
+                f_bind = e_m_arr[0]+j_int_g1g1 -np.log(np.exp(-e_m_arr[1]) + 1)  +2*j_int_g1g2
             elif n_m == 2:
-                f_bind = 2*e_m_arr[0]+j_int_g1g1  -np.log(2) + e_m_arr[1]
+                f_bind = 2*e_m_arr[0]+j_int_g1g1  -np.log(2) + e_m_arr[1]  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
             if n_m == 0:
-                f_bind = 0+j_int_g1g1 + 0+j_int_g2g2
+                f_bind = 0+j_int_g1g1 + 0+j_int_g2g2  +4*j_int_g1g2
             elif n_m == 1:
-                f_bind = e_m_arr[0]+j_int_g1g1 +  e_m_arr[1]+j_int_g2g2
+                f_bind = e_m_arr[0]+j_int_g1g1 +  e_m_arr[1]+j_int_g2g2  +4*j_int_g1g2
             elif n_m == 2:
-                f_bind = 2*e_m_arr[0]+j_int_g1g1 + 2*e_m_arr[1]+j_int_g2g2        
+                f_bind = 2*e_m_arr[0]+j_int_g1g1 + 2*e_m_arr[1]+j_int_g2g2  +4*j_int_g1g2        
                 
     elif n_m1 == 1 and n_m2 == 0:
         if n_b_arr==[0,0]:
@@ -163,11 +163,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[0,2]:
             f_bind = 0+j_int_g2g2
         elif n_b_arr==[1,2]:
-            f_bind = 0+j_int_g2g2 +  -np.log(np.exp(-e_m_arr[0]) + 1)
+            f_bind = 0+j_int_g2g2 +  -np.log(np.exp(-e_m_arr[0]) + 1)  +2*j_int_g1g2
         elif n_b_arr==[2,1]:
-            f_bind = e_m_arr[0]+j_int_g1g1 -np.log(2)
+            f_bind = e_m_arr[0]+j_int_g1g1 -np.log(2)  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind = e_m_arr[0]+j_int_g1g1 +j_int_g2g2 
+            f_bind = e_m_arr[0]+j_int_g1g1 +j_int_g2g2  +4*j_int_g1g2
     elif n_m1 == 0 and n_m2 == 1:
         if n_b_arr==[0,0]:
             f_bind = 0
@@ -182,11 +182,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[2,0]:
             f_bind = 0+j_int_g1g1
         elif n_b_arr==[1,2]:
-            f_bind = e_m_arr[1]+j_int_g2g2 -np.log(2)
+            f_bind = e_m_arr[1]+j_int_g2g2 -np.log(2)  +2*j_int_g1g2
         elif n_b_arr==[2,1]:
-            f_bind = 0+j_int_g1g1 -np.log(np.exp(-e_m_arr[1]) + 1)
+            f_bind = 0+j_int_g1g1 -np.log(np.exp(-e_m_arr[1]) + 1)  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind = e_m_arr[1]+j_int_g1g1 +j_int_g2g2
+            f_bind = e_m_arr[1]+j_int_g1g1 +j_int_g2g2  +4*j_int_g1g2
             
     elif n_m1 == 2 and n_m2 == 0:
         if n_b_arr==[0,0]:
@@ -202,11 +202,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[0,2]:
             f_bind = 0+j_int_g2g2
         elif n_b_arr==[1,2]:
-            f_bind = -np.log(2) + e_m_arr[0]+j_int_g2g2
+            f_bind = -np.log(2) + e_m_arr[0]+j_int_g2g2  +2*j_int_g1g2
         elif n_b_arr==[2,1]:
-            f_bind = 2*e_m_arr[0]+j_int_g1g1 -np.log(2)
+            f_bind = 2*e_m_arr[0]+j_int_g1g1 -np.log(2)  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind = 2*e_m_arr[0]+j_int_g1g1 +j_int_g2g2
+            f_bind = 2*e_m_arr[0]+j_int_g1g1 +j_int_g2g2  +4*j_int_g1g2
     elif n_m1 == 0 and n_m2 == 2:
         if n_b_arr==[0,0]:
             f_bind = 0
@@ -221,11 +221,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[2,0]:
             f_bind = 0+j_int_g1g1
         elif n_b_arr==[2,1]:
-            f_bind = -np.log(2) + e_m_arr[1]+j_int_g1g1
+            f_bind = -np.log(2) + e_m_arr[1]+j_int_g1g1  +2*j_int_g1g2
         elif n_b_arr==[1,2]:
-            f_bind = 2*e_m_arr[1]+j_int_g2g2 -np.log(2)
+            f_bind = 2*e_m_arr[1]+j_int_g2g2 -np.log(2)  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind = 2*e_m_arr[1]+j_int_g2g2 +j_int_g1g1  
+            f_bind = 2*e_m_arr[1]+j_int_g2g2 +j_int_g1g1   +4*j_int_g1g2
             
     elif n_m1 == 2 and n_m2 == 1:
         if n_b_arr==[0,0]:
@@ -241,11 +241,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[0,2]:
             f_bind =  e_m_arr[1]+j_int_g2g2
         elif n_b_arr==[2,1]:
-            f_bind = 2*e_m_arr[0]+j_int_g1g1 + -np.log(np.exp(-e_m_arr[1]) + 1)
+            f_bind = 2*e_m_arr[0]+j_int_g1g1 + -np.log(np.exp(-e_m_arr[1]) + 1)  +2*j_int_g1g2
         elif n_b_arr==[1,2]:
-            f_bind =  e_m_arr[1]+j_int_g2g2 -np.log(2) + e_m_arr[0]
+            f_bind =  e_m_arr[1]+j_int_g2g2 -np.log(2) + e_m_arr[0]  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind =    e_m_arr[1]+j_int_g2g2 + 2*e_m_arr[0]+j_int_g1g1  
+            f_bind =    e_m_arr[1]+j_int_g2g2 + 2*e_m_arr[0]+j_int_g1g1   +4*j_int_g1g2
     elif n_m1 == 1 and n_m2 == 2:
         if n_b_arr==[0,0]:
             f_bind = 0
@@ -260,11 +260,11 @@ def eval_f_bind_cooperative(n_b_arr, n_m_pair, e_m_arr,\
         elif n_b_arr==[2,0]:
             f_bind =  e_m_arr[0]+j_int_g1g1
         elif n_b_arr==[1,2]:
-            f_bind = 2*e_m_arr[1]+j_int_g2g2 + -np.log(np.exp(-e_m_arr[0]) + 1)
+            f_bind = 2*e_m_arr[1]+j_int_g2g2 + -np.log(np.exp(-e_m_arr[0]) + 1)  +2*j_int_g1g2
         elif n_b_arr==[2,1]:
-            f_bind =  e_m_arr[0]+j_int_g1g1 -np.log(2) + e_m_arr[1]
+            f_bind =  e_m_arr[0]+j_int_g1g1 -np.log(2) + e_m_arr[1]  +2*j_int_g1g2
         elif n_b_arr==[2,2]:
-            f_bind =    e_m_arr[0]+j_int_g1g1 + 2*e_m_arr[1]+j_int_g2g2    
+            f_bind =    e_m_arr[0]+j_int_g1g1 + 2*e_m_arr[1]+j_int_g2g2  +4*j_int_g1g2    
     return f_bind
 
 def eval_f_bind_cooperative_arr(n_b_arr, n_m_arr_1, n_m_arr_2, e_m_arr,\
@@ -386,14 +386,14 @@ def calc_binding_states(chrom):
 
     multi_soln_mus = np.zeros((len(mu1_array), len(mu2_array)))
     
-    P10_fbind = eval_f_bind_competitive_arr_2([1,0] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P01_fbind = eval_f_bind_competitive_arr_2([0,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P20_fbind = eval_f_bind_competitive_arr_2([2,0] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P02_fbind = eval_f_bind_competitive_arr_2([0,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P11_fbind = eval_f_bind_competitive_arr_2([1,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P21_fbind = eval_f_bind_competitive_arr_2([2,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P12_fbind = eval_f_bind_competitive_arr_2([1,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
-    P22_fbind = eval_f_bind_competitive_arr_2([2,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P10_fbind = eval_f_bind_cooperative_arr([1,0] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P01_fbind = eval_f_bind_cooperative_arr([0,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P20_fbind = eval_f_bind_cooperative_arr([2,0] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P02_fbind = eval_f_bind_cooperative_arr([0,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P11_fbind = eval_f_bind_cooperative_arr([1,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P21_fbind = eval_f_bind_cooperative_arr([2,1] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P12_fbind = eval_f_bind_cooperative_arr([1,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
+    P22_fbind = eval_f_bind_cooperative_arr([2,2] , poly_marks[0], poly_marks[1], e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1])
     f_binds = [P10_fbind, P01_fbind, P20_fbind, P02_fbind, P11_fbind, P21_fbind, P12_fbind, P22_fbind]
     
     #1)
@@ -443,21 +443,21 @@ def calc_binding_states(chrom):
                     om = [om_1, om_2]
                     P00= 1
                     P10= np.exp(mu[0] - erg_ints[0] \
-                                - eval_f_bind_competitive_2([1,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([1,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P01= np.exp(mu[1] - erg_ints[1] \
-                                - eval_f_bind_competitive_2([0,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([0,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P20= np.exp(2*mu[0] - 2*erg_ints[0] \
-                                - eval_f_bind_competitive_2([2,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([2,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P02= np.exp(2*mu[1] - 2*erg_ints[1] \
-                                - eval_f_bind_competitive_2([0,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([0,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P11= np.exp(mu[0] - erg_ints[0] + mu[1] - erg_ints[1] \
-                                - eval_f_bind_competitive_2([1,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([1,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P21= np.exp(2*mu[0] - 2*erg_ints[0] + mu[1] - erg_ints[1] \
-                                - eval_f_bind_competitive_2([2,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([2,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P12= np.exp(mu[0] - erg_ints[0] + 2*mu[1] - 2*erg_ints[1] \
-                                - eval_f_bind_competitive_2([1,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([1,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                     P22= np.exp(2*mu[0] - 2*erg_ints[0] + 2*mu[1] - 2*erg_ints[1] \
-                                - eval_f_bind_competitive_2([2,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                - eval_f_bind_cooperative([2,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
 
                     q = P00 + P10 + P01 + P20 + P02 + P11 + P21 + P12 + P22
                     sg1_avg_raw = 0*P00 + 1*P10 + 0*P01 + 2*P20 + 0*P02 + 1*P11 + 2*P21+ 1*P12+ 2*P22
@@ -554,21 +554,21 @@ def calc_binding_states(chrom):
                         om = [om1, om2]
                         P00= 1
                         P10= np.exp(mu[0] - erg_int[0] \
-                                    - eval_f_bind_competitive_2([1,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                    - eval_f_bind_cooperative([1,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                         P01= np.exp(mu[1] - erg_int[1] \
-                                    - eval_f_bind_competitive_2([0,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                    - eval_f_bind_cooperative([0,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                         P20= np.exp(2*mu[0] - 2*erg_int[0] \
-                                    - eval_f_bind_competitive_2([2,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                    - eval_f_bind_cooperative([2,0] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                         P02= np.exp(2*mu[1] - 2*erg_int[1] \
-                                    - eval_f_bind_competitive_2([0,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                    - eval_f_bind_cooperative([0,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
                         P11= np.exp(mu[0] - erg_int[0] + mu[1] - erg_int[1] \
-                                    - eval_f_bind_competitive_2([1,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
-                        P21= np.exp(2*mu[0] - 2*erg_int[0] + mu[1] - erg_ints[1] \
-                                    - eval_f_bind_competitive_2([2,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
-                        P12= np.exp(mu[0] - erg_int[0] + 2*mu[1] - 2*erg_ints[1] \
-                                    - eval_f_bind_competitive_2([1,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
-                        P22= np.exp(2*mu[0] - 2*erg_int[0] + 2*mu[1] - 2*erg_ints[1] \
-                                    - eval_f_bind_competitive_2([2,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                                    - eval_f_bind_cooperative([1,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                        P21= np.exp(2*mu[0] - 2*erg_int[0] + mu[1] - erg_int[1] \
+                                    - eval_f_bind_cooperative([2,1] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                        P12= np.exp(mu[0] - erg_int[0] + 2*mu[1] - 2*erg_int[1] \
+                                    - eval_f_bind_cooperative([1,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
+                        P22= np.exp(2*mu[0] - 2*erg_int[0] + 2*mu[1] - 2*erg_int[1] \
+                                    - eval_f_bind_cooperative([2,2] , om, e_m, v_int[0, 0],v_int[0, 1],v_int[1, 1]))
 
                         q = P00 + P10 + P01 + P20 + P02 + P11 + P21 + P12 + P22
                         sg1_avg_raw = 0*P00 + 1*P10 + 0*P01 + 2*P20 + 0*P02 + 1*P11 + 2*P21+ 1*P12+ 2*P22
