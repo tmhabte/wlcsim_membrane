@@ -9,13 +9,13 @@ import time
 
 start = time.time()
 
-# mu_max = 8#0.1 #10
-# mu_min = -8#-9
-# del_mu = .1 #0.25
+mu_max = 8#0.1 #10
+mu_min = -8#-9
+del_mu = .1 #0.25
 
-mu_max = 10
-mu_min = -10
-del_mu = 100 #0.25
+# mu_max = 10
+# mu_min = -10
+# del_mu = 10 #0.25
 
 klog_min = -2.5
 klog_max = -1
@@ -80,7 +80,7 @@ print("saved settings file")
 s_bind_A, s_bind_B = calc_binding_states(chrom)
 
 np.save(r"ID=%s_s_bind_A" % ID, s_bind_A)
-np.save(r"ID=%s_s_bind_B" % ID, s_bind_A)
+np.save(r"ID=%s_s_bind_B" % ID, s_bind_B)
 
 print("saved density maps")
 
