@@ -770,7 +770,7 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     avo = 6.02e23 # num / mol
     dens_p = 1 # g/cm^3
     mol_weight_p = 1e5 # g/mol
-    rho_p = avo*(1/mol_weight_p)*dens_p*M*(100**3)*(1/1e9)**3
+    rho_p = avo*(1/mol_weight_p)*dens_p*M*(100**3)*(1/1e9 )**3
     n_p = 1e8 
 
     M4 = calc_mon_mat_4(s_bnd_A, s_bnd_B)
@@ -818,11 +818,24 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     part1 = np.einsum("ijkl, im, jn, ko, lp-> mnop", s4, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4) \
     
     part2 = 0
-    for q in Ks:
-        s2_summed = sf2_inv(chrom, M2s, q, rho_p, n_p)
-        part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijk" ,s3_12, s3_34, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
-        part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijk" ,s3_13, s3_24, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
-        part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijk" ,s3_14, s3_23, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+
+    part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_12, s3_34, S2_inv_red_12, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+    part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_13, s3_24, S2_inv_red_13, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+    part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_14, s3_23, S2_inv_red_14, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+    # for q in Ks:
+    #     s2_summed = sf2_inv(chrom, M2s, q, rho_p, n_p)
+
+    #     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_12, s3_34, s2_summed, S2_inv_red, S2_inv_red_12, S2_inv_red_13, S2_inv_red_14)
+    #     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_13, s3_24, s2_summed, S2_inv_red, S2_inv_red_12, S2_inv_red_13, S2_inv_red_14)
+    #     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_14, s3_23, s2_summed, S2_inv_red, S2_inv_red_12, S2_inv_red_13, S2_inv_red_14)
+        
+        # part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_12, s3_34, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+        # part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_13, s3_24, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+        # part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_14, s3_23, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+
+        # part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijkl" ,s3_12, s3_34, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+        # part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijkl" ,s3_13, s3_24, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+        # part2 += np.einsum("ijk, ijk, il, jm, kn, il, jm -> ijkl" ,s3_14, s3_23, s2_summed, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4
                                
     # np.einsum("", 
     return part1 - part2
