@@ -503,6 +503,7 @@ import os
 
 # import multiprocessing
 
+
 def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspace(-3, -1, 30) ):
     # returns rank 3 tensor of mu1, mu2 , k, each value is S2 matrix    
     print(" I USING DATA TYPE " + str(DATA_TYPE))
@@ -529,8 +530,11 @@ def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspac
     mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
     
-    sf_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
-    
+    sf2_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+
+    sf3_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+    sf4_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+
     # pairs = np.column_stack(poly_marks)
     # pairs_ind = np.zeros(len(marks_1), dtype = int) # for each nucleosome (2 mark values), the corresponding index in s_bnd
 
@@ -570,6 +574,8 @@ def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspac
             
             M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
 
+            # M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
+            # M4 = calc_mon_mat_4(s_bnd_A, s_bnd_B)
             
             for ik, k in enumerate(k_vec):
                 # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = phi_c * np.array(calc_sf2_chromo_shlk(chrom, M2s, [k]))
@@ -581,5 +587,513 @@ def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspac
                                 [0, ss*N**2, 0, 0], \
                                 [cg1[0], 0, g1g1[0], g1g2[0]],\
                                 [cg2[0], 0, g2g1[0], g2g2[0]]])
-                sf_mat[i][j][ik] = S2_mat
+                sf2_mat[i][j][ik] = S2_mat
+
+                # NOT necessary to do- this code is to get the kstar/ spinodal!
+                # s4 = calc_sf4(chrom, M4, [K1], [K2], [K3]) 
+                # s31 = calc_sf3(chrom, M3, [K1], [K2])
     return sf_mat
+
+############################################ S3 and S4 calc. NOT NEEDED since this file gets spindoal/kstars1! ###########################################
+
+# def calc_single_monomer_matrix_3(s_bind_A, s_bind_B, alphas):
+#     # calculates the alph1 aph2 alph3 monomer identity cross correlation matrix
+#     # assumes all polymers consist of monomers with the same length N_m
+
+#     # alphas is the seqence that identifies the correlation. 0 indicates polymer, 1, indicates protein 1 ,etc
+
+#     a1, a2, a3 = alphas
+#     poly = np.ones(len(s_bind_A))
+#     sig_arr = [poly, s_bind_A, s_bind_B]
+#     return np.einsum('i,j,k',sig_arr[a1],sig_arr[a2],sig_arr[a3])
+
+# def calc_single_monomer_matrix_4(s_bind_A, s_bind_B, alphas):
+#     # calculates the alph1 aph2 alph3 monomer identity cross correlation matrix
+#     # assumes all polymers consist of monomers with the same length N_m
+
+#     # alphas is the seqence that identifies the correlation. 0 indicates polymer, 1, indicates protein 1 ,etc
+
+#     a1, a2, a3, a4 = alphas
+#     poly = np.ones(len(s_bind_A))
+#     sig_arr = [poly, s_bind_A, s_bind_B]
+#     return np.einsum('i,j,k,l',sig_arr[a1],sig_arr[a2],sig_arr[a3], sig_arr[a4])
+
+# def calc_mon_mat_3(s_bind_A, s_bind_B):
+#     nm = len(s_bind_A)
+#     sig_inds = [0,1,2] # polymer, gama1, gamma2
+#     M3_arr = np.zeros((len(sig_inds), len(sig_inds), len(sig_inds)), dtype= "object")
+#     for a1, a2, a3 in product(sig_inds, repeat=3):
+#         # print([a1, a2, a3])
+#         M3_arr[a1][a2][a3] = calc_single_monomer_matrix_3(s_bind_A, s_bind_B, [a1, a2, a3])
+#     return M3_arr
+
+# def calc_mon_mat_4(s_bind_A, s_bind_B):
+#     nm = len(s_bind_A)
+#     sig_inds = [0,1,2] # polymer, gama1, gamma2
+#     M4_arr = np.zeros((len(sig_inds), len(sig_inds), len(sig_inds), len(sig_inds)), dtype= "object")
+#     for a1, a2, a3, a4 in product(sig_inds, repeat=4):
+#         M4_arr[a1][a2][a3][a4] = calc_single_monomer_matrix_4(s_bind_A, s_bind_B, [a1, a2, a3, a4])
+#     return M4_arr
+
+# # ADAPTED FROM gaus_vertex_pd_mix.py
+# def calc_sf3(chrom, M3_arr, k_vec, k_vec_2, plotting = False):
+#     # for a gaussian chain of M monomers, each of length N_m
+    
+#     [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+#     # M = np.shape(M2_AA)[0]
+#     nk = len(k_vec)
+#     N = M*N_m
+
+#     sig_inds = [0,1,2] #polymer, prot1, prot2
+#     S3_arr = np.zeros((len(sig_inds),len(sig_inds),len(sig_inds))) #polymer, prot1, prot2
+
+#     grid = np.indices((M,M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+#     j3 = grid[2]
+    
+#     for i, k_1 in enumerate(k_vec):
+#         k_2 = k_vec_2[i]
+#         k_12 = k_1 + k_2
+
+#         # CASE 1; kA = k1 + k2, kB = k_1; S3 > S2 > S1 and S1 > S2 > S3
+#         case1 = [[k_12, k_1], [j3, j2, j1]]
+#         case1_deg = [[k_1, k_12], [j1, j2, j3]]
+
+#         # CASE 2; kA = k2, kB = k1 + k2; S2 > S1 > S3 and S3 > S1 > S2
+#         case2 = [[k_2, k_12], [j2, j1, j3]]
+#         case2_deg = [[k_12, k_2], [j3, j1, j2]]
+        
+#         # CASE 3; kA = k2, kB = -k1; S2 > S3 > S1 and S1 > S3 > S2
+#         case3 = [[-k_2, k_1], [j2, j3, j1]] # SWITCHED negatives from -k_1
+#         case3_deg = [[k_1, -k_2], [j1, j3, j2]] # SWITCHED negatives from -k_1
+        
+#         case_arr = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
+#         # need to consider degenerate cases. flipping each element in array, then appending to original case array
+#         # case_arr = np.vstack((case_arr, [[np.flipud(el) for el in cse] for cse in case_arr]))
+        
+# #        for each case and sub case, add to a matrix C(j1, j2, j3) which contains the contribution to the overall S3
+# #        then sum over all indices. Need to keep track of js so that aproiate multiplications with cross corr matrix M3        
+#         C = np.zeros((M,M,M))
+
+#         for cse in case_arr:
+#             kA, kB = cse[0]
+#             ordered_js = cse[1]
+            
+#             xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
+#             xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
+            
+#             C = calc_case_s3(C, xm_A, xm_B, ordered_js)
+
+#         for a1, a2, a3 in product(sig_inds, repeat=3):
+#             # print([a1, a2, a3])
+#             # M3_arr[a1][a2][a3] = calc_single_monomer_matrix_3(s_bind_A, s_bind_B, [a1, a2, a3])
+#             S3_arr[a1][a2][a3] += np.sum((1/M**3) * M3_arr[a1][a2][a3] * C)*(N**3)
+
+#     return S3_arr
+
+# def calc_case_s3(C, xm_A, xm_B, ordered_js):
+
+#     jmax, jmid, jmin = ordered_js
+    
+#     cylindrical = False
+#     epsilon = 0.0000001
+#     if xm_A + epsilon > xm_B and xm_A - epsilon < xm_B:
+#         cylindrical = True
+    
+#     xm_A_eq_0 = False
+#     if xm_A < 1e-5:
+#         xm_A_eq_0 = True
+        
+#     xm_B_eq_0 = False
+#     if xm_B < 1e-5:
+#         xm_B_eq_0 = True
+
+#     #for each sub case, looking at the degenerate case where 1 and 2 are switched
+#     constant = np.exp(-xm_A*(jmax - jmid)) * np.exp(-xm_B*(jmid - jmin)) 
+
+#     # sub case 1; jmax > jmid > jmin, {s1, s2, s3} any 
+#     index = (jmax > jmid) * (jmid > jmin)
+    
+#     if cylindrical == True:
+#         integral = (1 / xm_A**2) * 2 * (-1 + np.cosh(xm_A))
+#     elif xm_B_eq_0:
+#         integral = (2*(-1+np.cosh(xm_A)))/ (xm_A**2)
+#     elif xm_A_eq_0:
+#         integral = (2*(-1+np.cosh(xm_B)))/ (xm_B**2)
+#     else:
+#         integral = (-2 / (xm_A * (xm_A - xm_B) * xm_B)) \
+#         * (-np.sinh(xm_A) + np.sinh(xm_A - xm_B) + np.sinh(xm_B))
+
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+#     # sub case 2; jmax = jmid > jmin, s3 > s2, {s1} any
+#     index = (jmax == jmid) * (jmid > jmin)
+    
+#     if cylindrical == True:
+#         integral = (1 / xm_A**3) *( (2 + xm_A) * (-1 + np.cosh(xm_A)) - (xm_A * np.sinh(xm_A)) )
+#     elif xm_B_eq_0:
+#         integral = (-1 + xm_A + np.cosh(xm_A) - np.sinh(xm_A))/ (xm_A**2)
+#     elif xm_A_eq_0:
+#         integral = (np.exp(-xm_B)*(-1 + np.exp(xm_B))*(1+np.exp(xm_B)*(-1 + xm_B))) / (xm_B**3)   
+#     else:
+#         integral = ((-1 + np.exp(xm_B))/(xm_A * (xm_A - xm_B)*xm_B**2)) \
+#         * (xm_A + (-1 + np.exp(-xm_A))*xm_B - xm_A*np.cosh(xm_B) + xm_A*np.sinh(xm_B))
+
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral 
+
+#     # BONUS sub case 4; jmax > jmid = jmin, s2 > s1, {s3} any 
+#     index = (jmax > jmid) * (jmid == jmin)
+    
+#     if cylindrical == True:
+#         integral = (1 / xm_A**3) *( (2 + xm_A) * (-1 + np.cosh(xm_A)) - (xm_A * np.sinh(xm_A)) )
+#     elif xm_B_eq_0:
+#         integral = ((-2+xm_A)*(-1+np.cosh(xm_A))+ (xm_A*np.sinh(xm_A)))/ (xm_A**3)
+#     elif xm_A_eq_0:
+#         integral = (-1+xm_B+np.cosh(xm_B) - np.sinh(xm_B))/ (xm_B**2)
+#     else:
+#         integral = (((-1 + np.exp(xm_A))*(np.exp(-xm_A - xm_B)))/(xm_B * (xm_A - xm_B)*xm_A**2)) \
+#         * (-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B) * (xm_A -xm_B) + np.exp(xm_B)*xm_B)
+
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral 
+
+#     # sub case 3; jmax = jmid = jmin, s3 > s2 > s1
+#     index = (jmax == jmid) * (jmid == jmin)
+
+#     if cylindrical == True:
+#         integral = (1 / xm_A**3) * (np.exp(-xm_A) * (2 + np.exp(xm_A)*(-2 + xm_A) + xm_A))
+#     elif xm_B_eq_0:
+#         integral = (2-2*np.exp(-xm_A) - 2*xm_A + xm_A**2)/ (2*xm_A**3)
+#     elif xm_A_eq_0:
+#         integral = (2-2*np.exp(-xm_B) - 2*xm_B + xm_B**2)/ (2*xm_B**3)
+#     else:
+#         integral = (1 / (xm_A**2 * xm_B - xm_A * xm_B**2))\
+#         * ( xm_A + (((-1 + np.exp(-xm_B)) * xm_A)/(xm_B)) - xm_B + ((xm_B - np.exp(-xm_A)*xm_B)/(xm_A)) )
+
+#     C[np.where(index != 0)] += 1\
+#                                     * constant[np.where(index != 0)]\
+#                                     * integral
+#     return C
+
+# def calc_sf4(chrom, M4_arr, k_vec, k_vec_2, k_vec_3, plotting = False):
+#     [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+#     nk = len(k_vec)
+#     N = M*N_m
+#     sig_inds = [0,1,2] #polymer, prot1, prot2
+#     S4_arr = np.zeros((len(sig_inds),len(sig_inds),len(sig_inds),len(sig_inds))) 
+
+#     grid = np.indices((M,M,M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+#     j3 = grid[2]
+#     j4 = grid[3]
+    
+#     for i, k1 in enumerate(k_vec):
+#         k2 = k_vec_2[i]
+#         k3 = k_vec_3[i]
+#         k12 = k1 + k2
+#         k13 = k1 + k3
+#         k23 = k2 + k3
+#         k123 = k1 + k2 + k3
+        
+#         # CASE 1; kA = k1 + k2 + k3; kB = k_1 + k_2; kC = k_1  S4 > S3 > S2 > S1 (and reverse). All cases on wlcstat
+#         case1 = [[k123, k12, k1], [j4, j3, j2, j1]]
+#         case2 = [[k123, k12, k2], [j4, j3, j1, j2]]
+#         case3 = [[k123, k13, k1], [j4, j2, j3, j1]]
+#         case4 = [[k123, k23, k2], [j4, j1, j3, j2]]
+#         case5 = [[k123, k13, k3], [j4, j2, j1, j3]]
+#         case6 = [[k123, k23, k3], [j4, j1, j2, j3]]
+#         case7 = [[-k3, k12, k1], [j3, j4, j2, j1]]
+#         case8 = [[-k3, k12, k2], [j3, j4, j1, j2]]
+#         case9 = [[-k2, k13, k1], [j2, j4, j3, j1]]
+#         case10 = [[-k1, k23, k2], [j1, j4, j3, j2]]
+#         case11 = [[-k2, k13, k3], [j2, j4, j1, j3]]
+#         case12 = [[-k1, k23, k3], [j1, j4, j2, j3]]
+        
+#         case1_deg = [[k1, k12, k123], [j1, j2, j3, j4]]
+#         case2_deg = [[k2, k12, k123], [j2, j1, j3, j4]]
+#         case3_deg = [[k1, k13, k123], [j1, j3, j2, j4]]
+#         case4_deg = [[k2, k23, k123], [j2, j3, j1, j4]]
+#         case5_deg = [[k3, k13, k123], [j3, j1, j2, j4]]
+#         case6_deg = [[k3, k23, k123], [j3, j2, j1, j4]]
+#         case7_deg = [[k1, k12, -k3], [j1, j2, j4, j3]]
+#         case8_deg = [[k2, k12, -k3], [j2, j1, j4, j3]]
+#         case9_deg = [[k1, k13, -k2], [j1, j3, j4, j2]]
+#         case10_deg = [[k2, k23, -k1], [j2, j3, j4, j1]]
+#         case11_deg = [[k3, k13, -k2], [j3, j1, j4, j2]]
+#         case12_deg = [[k3, k23, -k1], [j3, j2, j4, j1]]
+
+
+
+#         case_arr = [case1, case2, case3, case4, case5, case6, \
+#                    case7, case8, case9, case10, case11, case12, \
+#                     case1_deg, case2_deg, case3_deg, case4_deg, case5_deg, case6_deg, \
+#                    case7_deg, case8_deg, case9_deg, case10_deg, case11_deg, case12_deg]
+# #         print("FASTER??") nope
+#         # need to consider degenerate cases. flipping each element in array, then appending to original case array
+#         # case_arr = np.vstack((case_arr, [[np.flipud(el) for el in cse] for cse in case_arr]))
+        
+# #        for each case and sub case, add to a matrix C(j1, j2, j3, j4) which contains the contribution to the overall S4
+# #        then sum over all indices. Need to keep track of js so that aproiate multiplications with cross corr matrix M4 
+#         C = np.zeros((M,M,M,M))
+#         for cse in case_arr:
+#             kA, kB, kC = cse[0]
+#             ordered_js = cse[1]
+            
+#             xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
+#             xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
+#             xm_C = (1/6) * N_m * b**2 * np.linalg.norm(kC)**2
+            
+#             C = calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js)
+            
+#         for a1, a2, a3, a4 in product(sig_inds, repeat=4):
+#             S4_arr[a1][a2][a3][a4] += np.sum((1/M**4) * M4_arr[a1][a2][a3][a4] * C)*(N**4) 
+    
+#     return S4_arr
+
+# def calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js):
+
+#     jmax, jupp, jlow, jmin = ordered_js
+    
+#     xmA_eq_xmB = False
+#     xmA_eq_xmC = False
+#     xmB_eq_xmC = False
+#     epsilon = 0.0000001
+#     if xm_A + epsilon > xm_B and xm_A - epsilon < xm_B:
+#         xmA_eq_xmB = True
+#     if xm_A + epsilon > xm_C and xm_A - epsilon < xm_C:
+#         xmA_eq_xmC = True
+#     if xm_B + epsilon > xm_C and xm_B - epsilon < xm_C:
+#         xmB_eq_xmC = True
+        
+#     xm_B_eq_0 = False
+#     if xm_B < 1e-5:
+#         xm_B_eq_0 = True
+
+#     #for each sub case, looking at the degenerate case where 1 and 2 are switched
+#     constant = np.exp(-xm_A*(jmax - jupp)- xm_B*(jupp - jlow) - xm_C*(jlow - jmin))
+
+#     # sub case 1; jmax > jupp > jlow > jmin, {s1234} any
+#     index = (jmax > jupp) * (jupp > jlow) * (jlow > jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = 2*(-1 + np.cosh(xm_A)) / xm_A**2
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = (16 / (xm_A**2 * xm_C**2) )* \
+#                     np.sinh(xm_A / 2)**2 *np.sinh(xm_C / 2)**2
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (16 / xm_A**4 )* \
+#                     np.sinh(xm_A / 2)**4
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = (16*np.sinh(xm_A / 2) * np.sinh((xm_A - xm_B)/2) * np.sinh((xm_B - xm_C)/2) * np.sinh(xm_C/2))\
+#                     / (xm_A * (xm_A - xm_B) * (xm_B - xm_C) * xm_C)
+#     elif xmA_eq_xmB:
+#         integral = -(2 / (xm_A*xm_C*(xm_A - xm_C))) * \
+#                     (-np.sinh(xm_A) + np.sinh(xm_A - xm_C) + np.sinh(xm_C))
+#     elif xmB_eq_xmC:
+#         integral = -(2 / (xm_A*xm_B*(xm_A - xm_B))) * \
+#                     (-np.sinh(xm_A) + np.sinh(xm_A - xm_B) + np.sinh(xm_B))
+#     elif xmA_eq_xmC:
+#         integral = (16 / (xm_A**2 * (xm_A - xm_B)**2) )* \
+#                     np.sinh(xm_A / 2)**2 *np.sinh((xm_A - xm_B) / 2)**2
+
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+#     # sub case 2; jmax = jupp > jlow > jmin
+#     index = (jmax == jupp) * (jupp > jlow) * (jlow > jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = (np.exp(-xm_A) * (-1 + np.exp(xm_A)) * (-1 + np.exp(xm_A) - xm_A))\
+#         / (xm_A**3)
+        
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = ((np.exp(-xm_A - xm_C)) * (-1+np.exp(xm_C))**2 * (1+np.exp(xm_A) *(-1 + xm_A)))\
+#         /(xm_A**2*xm_C**2)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = ((np.exp(-2*xm_A)) * (-1+np.exp(xm_A))**2 * (1+np.exp(xm_A) *(-1 + xm_A)))\
+#         /(xm_A**2*xm_A**2)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ((np.exp(-xm_A-xm_B-xm_C)) * (-1+np.exp(xm_C)) * (-np.exp(xm_B)+np.exp(xm_C))\
+#                     * (-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B)*(xm_A-xm_B) + np.exp(xm_B)*xm_B))\
+#                     / (xm_A*xm_B*xm_C*(xm_A - xm_B) * (xm_C - xm_B))
+#     elif xmA_eq_xmB:
+#         integral = ((np.exp(-xm_A - xm_C)) * (-1+np.exp(xm_C)) * (-np.exp(xm_A)+np.exp(xm_C)) * (-1+np.exp(xm_A) - xm_A))\
+#         /(xm_A**2*xm_C*(xm_C - xm_A))
+#     elif xmB_eq_xmC:
+#         integral = ((-1+np.exp(xm_B))*(xm_A - xm_A*np.exp(-xm_B) + (-1+np.exp(-xm_A))*xm_B))/(xm_B**2*xm_A*(xm_A - xm_B))
+#     elif xmA_eq_xmC:
+#         integral = ( (np.exp(-2*xm_A-xm_B))*(-1+np.exp(xm_A))*(np.exp(xm_A) - np.exp(xm_B))\
+#                     *(-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B)*(xm_A-xm_B) + np.exp(xm_B)*xm_B)) / (xm_B*xm_A**2*(xm_A-xm_B)**2)
+
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+
+
+#     # sub case 3; jmax > jupp = jlow > jmin
+#     index = (jmax > jupp) * (jupp == jlow) * (jlow > jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = (-1 + np.cosh(xm_A)) / (xm_A**2)
+        
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = ((np.exp(-xm_A - xm_C)) * (-1+np.exp(xm_A)) * (-1+np.exp(xm_C)) * (-np.exp(xm_A)*xm_A + np.exp(xm_A+xm_C)*(xm_A-xm_C) + np.exp(xm_C)*xm_C))\
+#         /(xm_A**2*xm_C**2*(xm_A - xm_C))
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (np.exp(-xm_A) * (-1+np.exp(xm_A))**2 * (-1 + np.exp(xm_A) - xm_A))\
+#         /(xm_A**4)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ((1-np.exp(-xm_A))*(-1+np.exp(xm_C))*( ( (1-np.exp(xm_A-xm_B))/(xm_A-xm_B) ) + ( (-1+np.exp(xm_A-xm_C))/(xm_A-xm_C) ) ))/(xm_A*xm_C*(xm_B - xm_C))
+#     elif xmA_eq_xmB:
+#         integral = ((np.exp(-xm_A - xm_C)) * (-1+np.exp(xm_A)) * (-1+np.exp(xm_C)) * (np.exp(xm_A)+np.exp(xm_C)*(-1-xm_A+xm_C)))\
+#         /(xm_A*xm_C*(xm_A - xm_C)**2)
+#     elif xmB_eq_xmC:
+#         integral = ((np.exp(-xm_A - xm_B)) * (-1+np.exp(xm_A)) * (-1+np.exp(xm_B)) * (np.exp(xm_B)+np.exp(xm_A)*(-1+xm_A-xm_B)))\
+#         /(xm_A*xm_B*(xm_A - xm_B)**2)
+#     elif xmA_eq_xmC:
+#         integral = ((np.exp(-xm_A - xm_B)) * (-1+np.exp(xm_A))**2 * (np.exp(xm_A)+np.exp(xm_B)*(-1-xm_A+xm_B)))/(xm_A**2 * (xm_A - xm_B)**2)
+  
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+
+
+#     # sub case 4; jmax > jupp > jlow = jmin
+#     index = (jmax > jupp) * (jupp > jlow) * (jlow == jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = ((2+xm_A)*(-1+np.cosh(xm_A)) - xm_A*np.sinh(xm_A))/(xm_A**3)
+    
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = (np.exp(-xm_A - xm_C) * (-1+np.exp(xm_A))**2 * (1 + np.exp(xm_C)*(-1 + xm_C)))\
+#         /(xm_A**2*xm_C**2)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (np.exp(-2*xm_A) * (-1+np.exp(xm_A))**2 * (1 + np.exp(xm_A)*(-1 + xm_A)))\
+#         /(xm_A**4)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ((np.exp(-xm_A-xm_B-xm_C)) * (-1+np.exp(xm_A)) * (-np.exp(xm_B)+np.exp(xm_A))\
+#                     * (-np.exp(xm_B)*xm_B + np.exp(xm_C + xm_B)*(xm_B-xm_C) + np.exp(xm_C)*xm_C))\
+#                     / (xm_A*xm_B*xm_C*(xm_A - xm_B) * (xm_B - xm_C))
+#     elif xmA_eq_xmB:
+#         integral = ((np.exp(-xm_A-xm_C)) * (-1+np.exp(xm_A)) * (-np.exp(xm_A)*xm_A + np.exp(xm_A+xm_C)*(xm_A-xm_C)+np.exp(xm_C)*xm_C)) / (xm_A**2*xm_C*(xm_A - xm_C))
+#     elif xmB_eq_xmC:
+#         integral = ((np.exp(-xm_A - xm_B)) * (-1+np.exp(xm_A)) * (-np.exp(xm_A)+np.exp(xm_B)) * (-1+np.exp(xm_B) - xm_B))\
+#         /(xm_A*xm_B**2*(xm_B - xm_A))
+#     elif xmA_eq_xmC:
+#         integral = ( (np.exp(-2*xm_A-xm_B))*(-1+np.exp(xm_A))*(np.exp(xm_A) - np.exp(xm_B))\
+#                     *(-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B)*(xm_A-xm_B) + np.exp(xm_B)*xm_B)) / (xm_B*xm_A**2*(xm_A-xm_B)**2)
+  
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+    
+#     # sub case 5; jmax == jupp == jlow > jmin
+#     index = (jmax == jupp) * (jupp == jlow) * (jlow > jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = (np.exp(-xm_A) * (-1 + np.exp(xm_A)) * (-2 + 2*np.exp(xm_A) - 2*xm_A - xm_A**2))\
+#         / (2*xm_A**4)
+        
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = ((-1+np.exp(xm_C))*( -xm_C + (   (xm_A*(-1+np.exp(-xm_C) + xm_C))  / (xm_C)  ) +  ( (xm_C-np.exp(-xm_A)*xm_C)  / (xm_A)  )     )) / (xm_A*(xm_A-xm_C)*xm_C**2)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (4-4*np.cosh(xm_A) + 2*xm_A*np.sinh(xm_A)) / (xm_A**4)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ((-1+np.exp(xm_C)) * (  ( (np.exp(-xm_B))/((xm_A-xm_B)*xm_B)   )  +  ( (xm_B - xm_C)/(xm_A*xm_B*xm_C)  )  +   (   (np.exp(-xm_C))/(xm_C*(xm_C-xm_A))    )  +    (    (np.exp(-xm_A)*(-xm_B+xm_C)) / ( xm_A*(xm_A-xm_B)*(xm_A-xm_C))  )   ))/((xm_B-xm_C)*xm_C)
+#     elif xmA_eq_xmB:
+#         integral = ((-1+np.exp(xm_C))* (  (-np.exp(-xm_C) * xm_A**2)     +    ((xm_A-xm_C)**2)    +     (np.exp(-xm_A)*xm_C*(xm_A**2 - xm_A*(-2+xm_C)-xm_C)) ))/(xm_A**2*xm_C**2*(xm_A-xm_C)**2)
+#     elif xmB_eq_xmC:
+#         integral = -((-1+np.exp(xm_B))* (  (np.exp(-xm_A) * xm_B**2)     +    -((xm_A-xm_B)**2)    +     (np.exp(-xm_B)*xm_A*(xm_A*(1+xm_B) - xm_B*(2+xm_B))) ))/(xm_B**3*xm_A*(xm_A-xm_B)**2)
+#     elif xmA_eq_xmC:
+#         integral = ((-1+np.exp(xm_A))* (  (-np.exp(-xm_B) * xm_A**2)     +    ((xm_A-xm_B)**2)    +     (np.exp(-xm_A)*xm_B*(xm_A**2 - xm_A*(-2+xm_B)-xm_B)) ))/(xm_A**3*xm_B*(xm_A-xm_B)**2)
+
+        
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+#     # sub case 6; jmax > jupp == jlow = jmin
+#     index = (jmax > jupp) * (jupp == jlow) * (jlow == jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = ((-1 + np.exp(-xm_A)) * (2 - 2*np.exp(xm_A) + 2*xm_A + xm_A**2))\
+#         / (2*xm_A**4)
+        
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = (np.exp(-xm_A - xm_C)) * (-1 + np.exp(xm_A)) * ( (np.exp(xm_A)*xm_A**2)  +   (np.exp(xm_A+xm_C)*(xm_A-xm_C)*(xm_A*(-1+xm_C) -xm_C) )   -    (np.exp(xm_C)*xm_C**2) ) / (xm_A**3*(xm_A-xm_C)*xm_C**2)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (4-4*np.cosh(xm_A) + 2*xm_A*np.sinh(xm_A)) / (xm_A**4)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ( (np.exp(-xm_A - xm_B - xm_C)) * (-1+np.exp(xm_A)) * \
+#                    (          (-np.exp(xm_A+xm_B)*xm_A*(xm_A-xm_B)*xm_B)      +         (np.exp(xm_A+xm_C)*xm_A*(xm_A-xm_C)*xm_C)     +       (np.exp(xm_B+xm_C)*(xm_B-xm_C)*(np.exp(xm_A)*(xm_A-xm_B)*(xm_A-xm_C) -xm_B*xm_C) )     ))\
+#                     / (xm_A**2 * (xm_A - xm_B) * xm_B * (xm_A-xm_C) * (xm_B - xm_C) * xm_C)
+#     elif xmA_eq_xmB:
+#         integral = ( (np.exp(-xm_A - xm_C)) * (-1 + np.exp(xm_A)) * ((-np.exp(xm_A)*xm_A**2) +   (np.exp(xm_A+xm_C)*(xm_A-xm_C)**2)    +    -(np.exp(xm_C)*xm_C*(-xm_A**2+xm_A*(-2+xm_C)+xm_C)) ))/ (xm_A**3*(xm_A-xm_C)**2*xm_C)
+#     elif xmB_eq_xmC:
+#         integral = ( (np.exp(-xm_A - xm_B)) * (-1 + np.exp(xm_A)) * ((-np.exp(xm_B)*xm_B**2) +   (np.exp(xm_A+xm_B)*(xm_A-xm_B)**2)    +    -(np.exp(xm_A)*xm_A*(xm_A*(1+xm_B)-xm_B*(2+xm_B))) ))/ (xm_A**2*(xm_A-xm_B)**2*xm_B**2)
+#     elif xmA_eq_xmC:
+#         integral = ( (np.exp(-xm_A - xm_B)) * (-1 + np.exp(xm_A)) * ((-np.exp(xm_A)*xm_A**2) +   (np.exp(xm_A+xm_B)*(xm_A-xm_B)**2)    +    -(np.exp(xm_B)*xm_B*(-xm_A**2+xm_A*(-2+xm_B)+xm_B)) ))/ (xm_A**3*(xm_A-xm_B)**2*xm_B)
+    
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+    
+#     # sub case 7; jmax == jupp == jlow = jmin
+#     index = (jmax == jupp) * (jupp == jlow) * (jlow == jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = (np.exp(-xm_A) * (6 + 2*(np.exp(xm_A)*(-3+xm_A)) + 4*xm_A + xm_A**2) ) / (2*xm_A**4)
+    
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = (  (2*(-1 + np.exp(-xm_A))*xm_C**3) + (2*xm_A*xm_C**3)  + (-xm_A**2*xm_C**3) + (xm_A**3*(2-2*np.exp(-xm_C)-2*xm_C+xm_C**2)) ) / (2*xm_A**3*(xm_A-xm_C)*xm_C**3)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = (np.exp(-xm_A) / (2*xm_A**4)) * ( (-2*(3+xm_A)) + (np.exp(xm_A) * (6-4*xm_A + xm_A**2)))
+
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ( (np.exp(-xm_A)) / (xm_A**2 * (xm_A-xm_B) * (xm_A - xm_C)) )      +      ( (np.exp(-xm_B)) / (xm_B**2 * (xm_B-xm_A) * (xm_B - xm_C)) )     +      ( (np.exp(-xm_C)) / (xm_C**2 * (xm_C-xm_A) * (xm_C - xm_B)) )      +        -(  (xm_B*xm_C + xm_A*(xm_B+xm_C-xm_B*xm_C))   /    (xm_A**2*xm_B**2*xm_C**2)  )
+#     elif xmA_eq_xmB:
+#         integral = (  (-xm_A**3) + (np.exp(-xm_C)*xm_A**3) + (xm_A*(xm_A-xm_C)**2*xm_C) + ((3*xm_A-2*xm_C)*xm_C**2) + ( np.exp(-xm_A)*xm_C**2 *(2*xm_C + xm_A*(-3-xm_A+xm_C))) ) / (xm_A**3 * xm_C**2 * (xm_A - xm_C)**2)
+#     elif xmB_eq_xmC:
+#         integral = ( ((xm_A - xm_B)**2 * (xm_A*(-2 + xm_B) - xm_B))     +     (np.exp(-xm_A) * xm_B**3)     +    (np.exp(-xm_B)*xm_A**2 * (xm_A*(2+xm_B) - xm_B*(3 + xm_B))  )      ) / (xm_A**2 * (xm_A - xm_B)**2 * xm_B**3)
+#     elif xmA_eq_xmC:
+#         integral =  (  (-xm_A**3) + (np.exp(-xm_B)*xm_A**3) + (xm_A*(xm_A-xm_B)**2*xm_B) + ((3*xm_A-2*xm_B)*xm_B**2) + ( np.exp(-xm_A)*xm_B**2 *(2*xm_B + xm_A*(-3-xm_A+xm_B))) ) / (xm_A**3 * xm_B**2 * (xm_A - xm_B)**2)
+ 
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral #* 2
+#     # sub case 8; jmax == jupp > jlow = jmin
+#     index = (jmax == jupp) * (jupp > jlow) * (jlow == jmin)
+
+#     if xmA_eq_xmB and xmB_eq_xmC:
+#         integral = (np.exp(-xm_A) * (1 + -np.exp(xm_A) +xm_A)**2)\
+#         / (xm_A**4)
+        
+#     elif xm_B_eq_0 and (not xmA_eq_xmC): #fABCBzero
+#         integral = ((np.exp(-xm_A - xm_C)) * (1+np.exp(xm_A) *(-1 + xm_A))*(1+np.exp(xm_C)*(-1+xm_C)))\
+#         /(xm_A**2*xm_C**2)
+#     elif xm_B_eq_0 and xmA_eq_xmC: #fABABzero
+#         integral = ( np.exp(-2*xm_A) * (1+np.exp(xm_A)*(-1 + xm_A))**2)\
+#         /(xm_A**4)
+        
+#     elif (not xmA_eq_xmB) and (not xmB_eq_xmC) and (not xmA_eq_xmC):
+#         integral = ((np.exp(-xm_A-xm_B-xm_C)) * (-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B)*(xm_A-xm_B) + np.exp(xm_B)*xm_B) *(-np.exp(xm_B)*xm_B + np.exp(xm_B + xm_C)*(xm_B-xm_C) + np.exp(xm_C)*xm_C) )\
+#                     / (xm_A*xm_B**2*xm_C*(xm_A - xm_B) * (xm_B - xm_C))
+#     elif xmA_eq_xmB:
+#         integral = ( (np.exp(-xm_A - xm_C)) * (-1 + np.exp(xm_A)-xm_A) * ( (-np.exp(xm_A)*xm_A) +   (np.exp(xm_A+xm_C)*(xm_A-xm_C))    +  (np.exp(xm_C)*xm_C) ))/ (xm_A**3*(xm_A-xm_C)*xm_C)
+#     elif xmB_eq_xmC:
+#         integral = ( (-1+np.exp(xm_B) - xm_B) * (xm_A-np.exp(-xm_B)*xm_A + (-1+np.exp(-xm_A))*xm_B) )/ (xm_A*(xm_A-xm_B)*xm_B**3)
+#     elif xmA_eq_xmC:
+#         integral = ( (np.exp(-2*xm_A-xm_B)) * (-np.exp(xm_A)*xm_A + np.exp(xm_A+xm_B)*(xm_A-xm_B) + np.exp(xm_B)*xm_B)**2) / (xm_A**2*xm_B**2*(xm_A-xm_B)**2)
+  
+#     C[np.where((index) != 0)] += constant[np.where(index != 0)] \
+#                                     * integral
+ 
+#     return C
