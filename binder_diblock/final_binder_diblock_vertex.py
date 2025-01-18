@@ -546,8 +546,8 @@ def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspac
     
     sf2_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
 
-    sf3_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
-    sf4_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+    # sf3_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
+    # sf4_mat = np.zeros((len(mu1_array[:]), len(mu2_array[:]), len(k_vec)), dtype = "object")
 
     # pairs = np.column_stack(poly_marks)
     # pairs_ind = np.zeros(len(marks_1), dtype = int) # for each nucleosome (2 mark values), the corresponding index in s_bnd
@@ -606,7 +606,7 @@ def calc_sf_mats(chrom, s_bind_1_soln_arr, s_bind_2_soln_arr, k_vec = np.logspac
                 # NOT necessary to do- this code is to get the kstar/ spinodal!
                 # s4 = calc_sf4(chrom, M4, [K1], [K2], [K3]) 
                 # s31 = calc_sf3(chrom, M3, [K1], [K2])
-    return sf_mat
+    return sf2_mat
 
 
 
@@ -1399,7 +1399,7 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
 #     FA, FB = f_om
 #     return [FA*FA], [FA*FB], [FB*FA], [FB*FB], [FA], [FB], [1]
 
-def sf2_inv_zeroq(chrom, rho_p, n_p):
+def sf2_inv_zeroq(chrom, rho_p):
     [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     s2 = np.ones((3,3),dtype='complex')
     s2 /= (rho_c / M)
@@ -1409,13 +1409,13 @@ def sf2_inv_zeroq(chrom, rho_p, n_p):
     # s2[2,0] == 0 # integral over all space of polymer fluctutaion = 0
     # s2[0,1] == 0 # integral over all space of polymer fluctutaion = 0
     # s2[0,2] == 0 # integral over all space of polymer fluctutaion = 0
-    return s2
+    return np.zeros((3,3),dtype='complex')#s2
     
-def sf2_inv(chrom, M2s, K1, rho_p, n_p):
+def sf2_inv(chrom, M2s, K1, rho_p):
     [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     if np.linalg.norm(K1) < 1e-5:
         # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  rho_p * ((N_m**2 * M)/n_p) * np.array(s2wlc_zeroq(chrom))
-        return sf2_inv_zeroq(chrom, rho_p, n_p)
+        return sf2_inv_zeroq(chrom, rho_p)
     else:
         g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  np.array(calc_sf2_chromo_shlk(chrom, M2s, [K1]))
     ss = alpha#
@@ -1436,7 +1436,7 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
         raise Exception('Qs must add up to zero')
 
     
-    [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
+    [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     # avo = 6.02e23 # num / mol
     # dens_p = 1 # g/cm^3
     # mol_weight_p = 1e5 # g/mol
@@ -1459,7 +1459,7 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
     M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
 
     #calc sf2\
-    S2_inv_red = sf2_inv(chrom, M2s, K1, rho_p, n_p)
+    S2_inv_red = sf2_inv(chrom, M2s, K1, rho_p)
     # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  rho_p * ((N_m**2 * M)/n_p) * np.array(calc_sf2_chromo_shlk(chrom, M2s, [K1]))
     # ss = rho_s#
     # S2_mat_k1 = 1/N**2 * np.array([[cc[0], 0, cg1[0], cg2[0]],\
@@ -1482,7 +1482,7 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
     # S2_inv_red_2 = np.array([[S2_inv[0,0] + S2_inv[1,1], S2_inv[0,2], S2_inv[0, 3]],\
     #    [S2_inv[2,0], S2_inv[2,2], S2_inv[2,3] ],\
     #    [S2_inv[3,0], S2_inv[3,2] , S2_inv[3,3]]])  
-    S2_inv_red_2 = sf2_inv(chrom, M2s, K2, rho_p, n_p)
+    S2_inv_red_2 = sf2_inv(chrom, M2s, K2, rho_p)
 
     
     # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  rho_p * ((N_m**2 * M)/n_p) * np.array(calc_sf2_chromo_shlk(chrom, M2s, [K3]))
@@ -1495,13 +1495,13 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
     # S2_inv_red_3 = np.array([[S2_inv[0,0] + S2_inv[1,1], S2_inv[0,2], S2_inv[0, 3]],\
     #    [S2_inv[2,0], S2_inv[2,2], S2_inv[2,3] ],\
     #    [S2_inv[3,0], S2_inv[3,2] , S2_inv[3,3]]])  
-    S2_inv_red_3 = sf2_inv(chrom, M2s, K3, rho_p, n_p)
+    S2_inv_red_3 = sf2_inv(chrom, M2s, K3, rho_p)
 
     #
     M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
 
 
-    s3 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
+    s3 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
     # s3 *= n_p # HAIL MARY
     # s3 /= n_p**(1/2) # HAIL MARY
     # s3 /= N_m**(3) # HAIL MARY
@@ -1509,7 +1509,7 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
 
     #s3 prefactor:  goal is 1/V * (N**3 * 1/N**3) = rho_p / (M * np)
     
-    s3[0,0,0] += alpha * (rho_c/M) #solvent sf
+    s3[0,0,0] += alpha * (rho_p/M) #solvent sf
             
         
     G3 = -np.einsum("ijk,il,jm,kn-> lmn", s3, S2_inv_red, S2_inv_red_2, S2_inv_red_3)
@@ -1564,14 +1564,14 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     sisj_BB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_B, s_bnd_B)    
     M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
     
-    S2_inv_red = sf2_inv(chrom, M2s, K, rho_p, n_p)
-    S2_inv_red_12 = sf2_inv(chrom, M2s, K12, rho_p, n_p)
-    S2_inv_red_13 = sf2_inv(chrom, M2s, K13, rho_p, n_p)
-    S2_inv_red_14 = sf2_inv(chrom, M2s, K14, rho_p, n_p)
+    S2_inv_red = sf2_inv(chrom, M2s, K, rho_p)
+    S2_inv_red_12 = sf2_inv(chrom, M2s, K12, rho_p)
+    S2_inv_red_13 = sf2_inv(chrom, M2s, K13, rho_p)
+    S2_inv_red_14 = sf2_inv(chrom, M2s, K14, rho_p)
 
-    S2_inv_red_2 = sf2_inv(chrom, M2s, K2, rho_p, n_p)
-    S2_inv_red_3 = sf2_inv(chrom, M2s, K3, rho_p, n_p)
-    S2_inv_red_4 = sf2_inv(chrom, M2s, K4, rho_p, n_p)
+    S2_inv_red_2 = sf2_inv(chrom, M2s, K2, rho_p)
+    S2_inv_red_3 = sf2_inv(chrom, M2s, K3, rho_p)
+    S2_inv_red_4 = sf2_inv(chrom, M2s, K4, rho_p)
 
 
     # print("Sfs:")
@@ -1598,8 +1598,8 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     
 
     part1 = np.einsum("ijkl, im, jn, ko, lp-> mnop", s4, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4) 
-    print("g4 part1:")
-    print(part1)
+    # print("g4 part1:")
+    # print(part1)
     # print("NO PART 2 IN GAM 4")
     part2 = 0
 
@@ -1607,12 +1607,12 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_13, s3_24, S2_inv_red_13, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_14, s3_23, S2_inv_red_14, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
 
-    print("g4 part2 raw:")
-    print(part2)
+    # print("g4 part2 raw:")
+    # print(part2)
 
-    V = (2*np.pi)**3#1e01
-    print("part2 div by V= %s" % V)
-    part2 /= V
+    # V = (2*np.pi)**3#1e01
+    # print("part2 div by V= %s" % V)
+    # part2 /= V
     #WRONG::
     # for q in Ks:
     #     s2_summed = sf2_inv(chrom, M2s, q, rho_p, n_p)
