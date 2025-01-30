@@ -1494,21 +1494,31 @@ def calc_fb(phia, phib):
 #     return [FA*FA], [FA*FB], [FB*FA], [FB*FB], [FA], [FB], [1]
 
 def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
-    print("NEED TO REDO FOR UNBOUND")
+    print("just guessed unbound contribuion")
     [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     fa = calc_fa(s_bnd_A, s_bnd_B)
     fb = calc_fb(s_bnd_A, s_bnd_B)
-    s2 = np.zeros((4,4),dtype='complex')
-    s2[0,0] += 1/9
-    s2[1,0] += (1/fa) / 9
-    s2[0,1] += (1/fa) / 9
-    s2[2,0] += (1/fb) / 9
-    s2[0,2] += (1/fb) / 9
-    s2[1,1] += (1/ fa**2) / 9
-    s2[1,2] += (1 / (fa * fb)) / 9
-    s2[2,1] += (1 / (fa * fb)) / 9
-    s2[2,2] += (1/fb**2) / 9
-    s2[3,3] += (N**2 / alpha)
+    fu = 1 - fa - fb
+    s2 = np.zeros((5,5),dtype='complex')
+    s2[0,0] += 1/16
+    s2[1,0] += (1/fa) / 16
+    s2[0,1] += (1/fa) / 16
+    s2[2,0] += (1/fb) / 16
+    s2[0,2] += (1/fb) / 16
+    s2[1,1] += (1/ fa**2) / 16
+    s2[1,2] += (1 / (fa * fb)) / 16
+    s2[2,1] += (1 / (fa * fb)) / 16
+    s2[2,2] += (1/fb**2) / 16
+
+    s2[0,3] += (1/fu) / 16
+    s2[3,0] += (1/fu) / 16
+    s2[1,3] += (1/(fu*fa)) / 16
+    s2[3,1] += (1/(fu*fa)) / 16
+    s2[3,2] += (1/(fu*fb)) / 16
+    s2[2,3] += (1/(fu*fb)) / 16
+    s2[3,3] += (1/ fu**2) / 16
+
+    s2[4,4] += (N**2 / alpha)
 
 
     s2 *= (M / (2*rho_p*N**2)) 
