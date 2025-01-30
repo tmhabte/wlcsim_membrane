@@ -1498,19 +1498,22 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     fa = calc_fa(s_bnd_A, s_bnd_B)
     fb = calc_fb(s_bnd_A, s_bnd_B)
-    s2 = np.ones((3,3),dtype='complex') / 9
-    s2[0,0] += (N**2 / alpha)
-    s2[1,0] *= (1/fa)
-    s2[0,1] *= (1/fa)
-    s2[2,0] *= (1/fb)
-    s2[0,2] *= (1/fb)
-    s2[1,1] *= (1/ fa**2)
-    s2[1,2] *= (1 / (fa * fb))
-    s2[2,1] *= (1 / (fa * fb))
-    s2[2,2] *= (1/fb**2)
+    s2 = np.zeros((4,4),dtype='complex')
+    s2[0,0] += 1/9
+    s2[1,0] += (1/fa) / 9
+    s2[0,1] += (1/fa) / 9
+    s2[2,0] += (1/fb) / 9
+    s2[0,2] += (1/fb) / 9
+    s2[1,1] += (1/ fa**2) / 9
+    s2[1,2] += (1 / (fa * fb)) / 9
+    s2[2,1] += (1 / (fa * fb)) / 9
+    s2[2,2] += (1/fb**2) / 9
+    s2[3,3] += (N**2 / alpha)
+
 
     s2 *= (M / (2*rho_p*N**2)) 
-    return s2#np.zeros((3,3),dtype='complex')#s2
+    # print("FIX FOR UNREDUCTION")
+    return s2    
     
 # def sf2_inv(chrom, M2s, K1, rho_p, s_bnd_A, s_bnd_B):
 #     [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
@@ -1726,15 +1729,23 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     n_p = np.nan 
     
     # calc m2s
+    s_bnd_U = 1 - s_bnd_A - s_bnd_B       
+    
     cc_red = eval_and_reduce_cc(M)
     s_cgam0_red = eval_and_reduce_cgam(s_bnd_A)
     s_cgam1_red = eval_and_reduce_cgam(s_bnd_B)
     sisj_AA_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_A, s_bnd_A)
     sisj_AB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_A, s_bnd_B)
     sisj_BA_red = sisj_AB_red
-    sisj_BB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_B, s_bnd_B)    
-    M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
-    
+    sisj_BB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_B, s_bnd_B)
+    s_cu_red = eval_and_reduce_cgam(s_bnd_U)
+    sisj_UA_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_U, s_bnd_A)
+    sisj_UB_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_U, s_bnd_B)
+    sisj_UU_red = eval_and_reduce_sisj_bind_simp(chrom, s_bnd_U, s_bnd_U)
+
+    M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red, s_cu_red, sisj_UA_red, sisj_UB_red, sisj_UU_red]
+    #calc sf2\
+
     S2_inv_red = sf2_inv_raw(chrom, M2s, K, rho_p, s_bnd_A, s_bnd_B)
     S2_inv_red_12 = sf2_inv_raw(chrom, M2s, K12, rho_p, s_bnd_A, s_bnd_B)
     S2_inv_red_13 = sf2_inv_raw(chrom, M2s, K13, rho_p, s_bnd_A, s_bnd_B)
