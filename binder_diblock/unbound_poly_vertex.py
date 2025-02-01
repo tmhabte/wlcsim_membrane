@@ -1447,16 +1447,21 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
     #invert, calc g2
     S2_inv = np.linalg.inv(S2_mat)
 
-    # poly/solv reduction
-    S2_inv_ps =  np.array([[S2_inv[0,0] + S2_inv[4,4], S2_inv[0,1], S2_inv[0, 2], S2_inv[0, 3]],\
-       [S2_inv[1,0], S2_inv[1,1] , S2_inv[1,2], S2_inv[1,3]],\
-       [S2_inv[2,0], S2_inv[2,1] , S2_inv[2,2], S2_inv[2,3]],\
-       [S2_inv[3, 0], S2_inv[3, 1], S2_inv[3, 2], S2_inv[3,3]]])
+    # # poly/solv reduction
+    # S2_inv_ps =  np.array([[S2_inv[0,0] + S2_inv[4,4], S2_inv[0,1], S2_inv[0, 2], S2_inv[0, 3]],\
+    #    [S2_inv[1,0], S2_inv[1,1] , S2_inv[1,2], S2_inv[1,3]],\
+    #    [S2_inv[2,0], S2_inv[2,1] , S2_inv[2,2], S2_inv[2,3]],\
+    #    [S2_inv[3, 0], S2_inv[3, 1], S2_inv[3, 2], S2_inv[3,3]]])
     
-    # then apply unbound poly reduction
-    T = np.array([[1,0,0], [0,1,0], [0,0,1], [1,-1,-1]]) # \Delta_{unred} = T \Delta_{red}
+    # # then apply unbound poly reduction
+    # T = np.array([[1,0,0], [0,1,0], [0,0,1], [1,-1,-1]]) # \Delta_{unred} = T \Delta_{red}
 
-    S2_inv_full = np.einsum("ij, ik, jl -> kl", S2_inv_ps, T, T) # only in terms of P, A, B
+    # S2_inv_full = np.einsum("ij, ik, jl -> kl", S2_inv_ps, T, T) # only in terms of P, A, B
+
+
+    T = np.array([[1,0,0], [0,1,0], [0,0,1], [1,-1,-1], [-1,0,0]]) # \Delta_{unred} = T \Delta_{red}
+    
+    S2_inv_full = np.einsum("ij, ik, jl -> kl", S2_inv, T, T) 
 
     G2 = np.array([[S2_inv_full[0,0] - 2*chi, S2_inv_full[0,1], S2_inv_full[0, 2]],\
        [S2_inv_full[1,0], S2_inv_full[1,1] + v_int[0,0]*Vol_int, S2_inv_full[1,2] + v_int[0,1]*Vol_int],\
@@ -1498,7 +1503,7 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     fa = calc_fa(s_bnd_A, s_bnd_B)
     fb = calc_fb(s_bnd_A, s_bnd_B)
-    fu = 1 - fa - fb
+    fu = 1 - fa - fb + 0.000001 # LOL
     s2 = np.zeros((5,5),dtype='complex')
     s2[0,0] += 1/16
     s2[1,0] += (1/fa) / 16
@@ -1728,12 +1733,12 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     s3_34 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K3], [K4])
     
     
-    s3_12[0,0,0] += alpha * (rho_c/M)#solvent sf
-    s3_13[0,0,0] += alpha * (rho_c/M)#solvent sf
-    s3_14[0,0,0] += alpha * (rho_c/M)#solvent sf
-    s3_23[0,0,0] += alpha * (rho_c/M)#solvent sf
-    s3_24[0,0,0] += alpha * (rho_c/M)#solvent sf
-    s3_34[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_12[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_13[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_14[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_23[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_24[0,0,0] += alpha * (rho_c/M)#solvent sf
+    # s3_34[0,0,0] += alpha * (rho_c/M)#solvent sf
     
     rho_p = rho_c
     n_p = np.nan 
