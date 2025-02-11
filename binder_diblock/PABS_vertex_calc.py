@@ -33,31 +33,49 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
     #invert, calc g2
     S2_inv = np.linalg.inv(S2_mat)
 
+    # en_fac = 1e-1# energetic prefactor
     G2 = np.array([[S2_inv[0,0] - 2*chi + S2_inv[3,3], S2_inv[0,1], S2_inv[0, 2]],\
        [S2_inv[1,0], S2_inv[1,1] + v_int[0,0]*Vol_int, S2_inv[1,2] + v_int[0,1]*Vol_int],\
        [S2_inv[2,0], S2_inv[2,1] + v_int[1,0]*Vol_int, S2_inv[2,2] + v_int[1,1]*Vol_int]])
-        
+    
+    # en_fac = 1e-1# energetic prefactor
+    # G2 = np.array([[S2_inv[0,0] - 2*chi + S2_inv[3,3], S2_inv[0,1], S2_inv[0, 2]],\
+    #    [S2_inv[1,0], S2_inv[1,1] + v_int[0,0]*Vol_int*(en_fac), S2_inv[1,2] + v_int[0,1]*Vol_int*(en_fac)],\
+    #    [S2_inv[2,0], S2_inv[2,1] + v_int[1,0]*Vol_int*(en_fac), S2_inv[2,2] + v_int[1,1]*Vol_int*(en_fac)]])
+    # print("ADDED 1/N to vol_int terms!") didnt change anytihng    
+    # print("multiplied v_int by rho_p")
+    # print("multiplied v_int by M/rho_p")
+    # print("multiplied v_int by small num: ", en_fac)
+
     return G2
 
 def calc_fa(phia, phib):
     nm = len(phia)
-    
+    phiu = 1 - phia - phib
     ind = 0
+    # for i in range(nm):
+    #     if phia[i] > phib[i]:
+    #         ind += 1
+
     for i in range(nm):
-        if phia[i] > phib[i]:
+        if phia[i] > (phib[i] + phiu[i]):
             ind += 1
-    
+
     fa = ind / nm
-    
+    # print("edited fa")
     return fa
 def calc_fb(phia, phib):
     nm = len(phia)
+    phiu = 1 - phia - phib
     
     ind = 0
+    # for i in range(nm):
+    #     if phib[i] > phia[i]:
+    #         ind += 1
     for i in range(nm):
-        if phib[i] > phia[i]:
+        if phib[i] > (phia[i] + phiu[i]):
             ind += 1
-    
+
     fb = ind / nm
     
     return fb
@@ -78,6 +96,21 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     # s2[2,2] += (1/fb**2) / 9
     # s2[3,3] += (N**2 / alpha)
 
+    # C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
+    # s2[0,0] += C
+    # s2[1,0] += C
+    # s2[0,1] += C
+    # s2[2,0] += C
+    # s2[0,2] += C
+    # s2[1,1] += C
+    # s2[1,2] += C
+    # s2[2,1] += C
+    # s2[2,2] += C
+    # s2[3,3] += (N**2 / alpha)
+
+    # s2 *= (M / (rho_p*N**2)) 
+
+    # AB "alt" analysis analog
     C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
     s2[0,0] += C
     s2[1,0] += C
@@ -88,9 +121,10 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     s2[1,2] += C
     s2[2,1] += C
     s2[2,2] += C
-    s2[3,3] += (N**2 / alpha)
+    s2[3,3] += (N**1 / alpha)
 
-    s2 *= (M / (rho_p*N**2)) 
+    s2 *= (M / (rho_p*N**1)) 
+    print("alt s2_0qinv")
     return s2    
 
 # def sf2_inv(chrom, M2s, K1, rho_p, s_bnd_A, s_bnd_B):
@@ -155,9 +189,10 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
     M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
 
 
+
     s3 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
             
-    T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,0,0]]) # \Delta_{unred} = T \Delta_{red}           
+    T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,0,0]])# \Delta_{unred} = T \Delta_{red}           
         
     G3 = np.einsum("ijk,il,jm,kn-> lmn", -s3, S2_inv_red, S2_inv_red_2, S2_inv_red_3)
 
@@ -173,22 +208,22 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     K13 = np.linalg.norm(K1+K3)
     K14 = np.linalg.norm(K1+K4)
 
-    [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
+    [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     
     M4 = calc_mon_mat_4(s_bnd_A, s_bnd_B)
     
-    s4 = ( rho_c/(M) ) * calc_sf4(chrom, M4, [K1], [K2], [K3]) 
+    s4 = ( rho_p/(M) ) * calc_sf4(chrom, M4, [K1], [K2], [K3]) 
 
     M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
 
-    s3_12 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
-    s3_13 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K1], [K3])
-    s3_14 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K1], [K4])
-    s3_23 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K2], [K3])
-    s3_24 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K2], [K4])
-    s3_34 = ( rho_c/(M) ) * calc_sf3(chrom, M3, [K3], [K4])
+    s3_12 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
+    s3_13 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K3])
+    s3_14 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K4])
+    s3_23 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K2], [K3])
+    s3_24 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K2], [K4])
+    s3_34 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K3], [K4])
     
-    rho_p = rho_c
+    # rho_p = rho_c
     # n_p = np.nan 
     
     # calc m2s
@@ -212,13 +247,28 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
 
     part1 = np.einsum("ijkl, im, jn, ko, lp-> mnop", s4, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4) 
 
+
     part2 = 0
+
+    # ###################PRIOR PART 2############################
 
     # edited index so that alphas match correctly b/w s3s and s2s
     part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_12, s3_34, S2_inv_red_12, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
-    part2 += np.einsum("abc, def, cf, ai, dk, bj, el -> ijkl" ,s3_13, s3_24, S2_inv_red_13, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+    part2 += np.einsum("abc, def, cf, ai, dk, bj, el -> ijkl" ,s3_13, s3_24, S2_inv_red_13, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4) #s3(k1,k3) {abc} @ s2inv(k1){a} @ s2inv(k3){b} @ s2inv(k1+k3){c}
     part2 += np.einsum("abc, def, cf, ai, dk, el, bj -> ijkl" ,s3_14, s3_23, S2_inv_red_14, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
     
+    # ###################PRIOR PART 2############################^^^^^^^^^^^^^
+
+
+    ####################### NEW PART 2 #############################
+
+    # # edited index so that alphas match correctly b/w s3s and s2s
+    # part2 += np.einsum("abc, def, cf, ai, bj, dk, el -> ijkl" ,s3_12, s3_34, S2_inv_red_12, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+    # part2 += np.einsum("abc, def, cf, ai, dk, bj, el -> ijkl" ,s3_13, s3_24, S2_inv_red_13, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4) #s3(k1,k3) {abc} @ s2inv(k1){a} @ s2inv(k3){b} @ s2inv(k1+k3){c}
+    # part2 += np.einsum("abc, def, cf, ai, dk, el, bj -> ijkl" ,s3_14, s3_23, S2_inv_red_14, S2_inv_red, S2_inv_red_2, S2_inv_red_3, S2_inv_red_4)
+
+    # print("part1:", part1)
+    # print("part2:", part2)
     G4 = (part1 - part2)
     T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,0,0]]) # \Delta_{unred} = T \Delta_{red} 
 
