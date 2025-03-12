@@ -161,10 +161,10 @@ def sf2_inv_zeroq_alt(chrom, rho_p, s_bnd_A, s_bnd_B, vol_terms):
     phi_s = 1 - phi_p
 
     s2 = np.zeros((3,3),dtype='complex')
-    s2[0,0] = 1/(N*A)
-    s2[0,1] = 1/(N*A)
-    s2[1,0] = 1/(N*A)
-    s2[1,1] = 1/(N*A)
+    s2[0,0] = 1/(N*A*phi_p)
+    s2[0,1] = 1/(N*A*phi_p)
+    s2[1,0] = 1/(N*A*phi_p)
+    s2[1,1] = 1/(N*A*phi_p)
     # s2[2,2] = v_s/phi_s
     s2[2,2] = 1/(phi_s*v_s)
 

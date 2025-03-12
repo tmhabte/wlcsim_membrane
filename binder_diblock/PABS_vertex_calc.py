@@ -9,7 +9,7 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
     # polymer-solv chi
 
     [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
-        
+   
     # calc m2s
     cc_red = eval_and_reduce_cc(M)
     s_cgam0_red = eval_and_reduce_cgam(s_bnd_A)
@@ -21,15 +21,28 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
     M2s = [sisj_AA_red,sisj_AB_red,sisj_BA_red,sisj_BB_red, s_cgam0_red, s_cgam1_red, cc_red]
 
     #calc sf2
-    g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  np.array(calc_sf2_chromo_shlk(chrom, M2s, [K]))
-    
-    ss = alpha
+    g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc = np.array(calc_sf2_chromo_shlk(chrom, M2s, [K]))
+
+    #calc sf2
+    # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  (M**2 / N**2) * np.array(calc_sf2_chromo_shlk(chrom, M2s, [K]))
+    # print("M^2 factor")
+
+    # NORMAL:  s2 has rho_p/M, ss is just alpha
+    # ss = alpha
                 
-    S2_mat = (rho_p / M) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
+    # S2_mat = (rho_p / M) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
+    #                 [cg1[0], g1g1[0], g1g2[0], 0],\
+    #                 [cg2[0], g2g1[0], g2g2[0], 0],\
+    #                 [0, 0, 0, ss]])
+
+    print("vm=A=1 edits - M = N")
+    ss = alpha * (N / M)
+                
+    S2_mat = (rho_p / N) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
                     [cg1[0], g1g1[0], g1g2[0], 0],\
                     [cg2[0], g2g1[0], g2g2[0], 0],\
                     [0, 0, 0, ss]])
-
+    
     #invert, calc g2
     S2_inv = np.linalg.inv(S2_mat)
 
@@ -37,6 +50,7 @@ def gamma2(chrom, s_bnd_A, s_bnd_B, K, chi):
     G2 = np.array([[S2_inv[0,0] - 2*chi + S2_inv[3,3], S2_inv[0,1], S2_inv[0, 2]],\
        [S2_inv[1,0], S2_inv[1,1] + v_int[0,0]*Vol_int, S2_inv[1,2] + v_int[0,1]*Vol_int],\
        [S2_inv[2,0], S2_inv[2,1] + v_int[1,0]*Vol_int, S2_inv[2,2] + v_int[1,1]*Vol_int]])
+    # print("shouldnt it be POSITIVE chi?") NO
     
     # en_fac = 1e-1# energetic prefactor
     # G2 = np.array([[S2_inv[0,0] - 2*chi + S2_inv[3,3], S2_inv[0,1], S2_inv[0, 2]],\
@@ -54,8 +68,8 @@ def calc_fa(phia, phib):
     phiu = 1 - phia - phib
     ind = 0
     # for i in range(nm):
-    #     if phia[i] > phib[i]:
-    #         ind += 1
+        # if phia[i] > phib[i]:
+            # ind += 1
 
     for i in range(nm):
         if phia[i] > (phib[i] + phiu[i]):
@@ -82,9 +96,11 @@ def calc_fb(phia, phib):
 
 def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
+ 
     fa = calc_fa(s_bnd_A, s_bnd_B)
     fb = calc_fb(s_bnd_A, s_bnd_B)
     s2 = np.zeros((4,4),dtype='complex')
+    # OLD
     # s2[0,0] += 1/9
     # s2[1,0] += (1/fa) / 9
     # s2[0,1] += (1/fa) / 9
@@ -96,6 +112,23 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     # s2[2,2] += (1/fb**2) / 9
     # s2[3,3] += (N**2 / alpha)
 
+    # # OLD; v_m=A=1; M=N
+    # s2[0,0] += 1/9
+    # s2[1,0] += (1/fa) / 9
+    # s2[0,1] += (1/fa) / 9
+    # s2[2,0] += (1/fb) / 9
+    # s2[0,2] += (1/fb) / 9
+    # s2[1,1] += (1/ fa**2) / 9
+    # s2[1,2] += (1 / (fa * fb)) / 9
+    # s2[2,1] += (1 / (fa * fb)) / 9
+    # s2[2,2] += (1/fb**2) / 9
+    # s2[3,3] += (N**2 / (alpha* (N / M)))
+
+    # s2 *= (N / (rho_p*N**2))
+    # print("OLD s2 inverse where M = N (M is real number of monomers, not avgds; for vm=A=1)")
+ 
+
+    # # seems corrret, but based on vol frac?
     # C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
     # s2[0,0] += C
     # s2[1,0] += C
@@ -110,7 +143,7 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
 
     # s2 *= (M / (rho_p*N**2)) 
 
-    # AB "alt" analysis analog
+    # #M=N; A =vm = 1
     C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
     s2[0,0] += C
     s2[1,0] += C
@@ -121,10 +154,42 @@ def sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B):
     s2[1,2] += C
     s2[2,1] += C
     s2[2,2] += C
-    s2[3,3] += (N**1 / alpha)
+    s2[3,3] += (N**2 / (alpha* (N / M)))
 
-    s2 *= (M / (rho_p*N**1)) 
-    print("alt s2_0qinv")
+    s2 *= (N / (rho_p*N**2)) 
+    print("s2 inverse where M = N (M is real number of monomers, not avgds; for vm=A=1)")
+
+    # replace N^2 w M^2 to correct for number density
+    # C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
+    # s2[0,0] += C
+    # s2[1,0] += C
+    # s2[0,1] += C
+    # s2[2,0] += C
+    # s2[0,2] += C
+    # s2[1,1] += C
+    # s2[1,2] += C
+    # s2[2,1] += C
+    # s2[2,2] += C
+    # s2[3,3] += (M**2 / alpha)
+
+    # s2 *= (M / (rho_p*M**2)) 
+    # print("M^2 factor")
+
+    # # AB "alt" analysis analog- just wrong, but leads to stable Fs
+    # C = 1 / (1 + fa**2 + fb**2 + 2*fa + 2*fb + 2*fa*fb)
+    # s2[0,0] += C
+    # s2[1,0] += C
+    # s2[0,1] += C
+    # s2[2,0] += C
+    # s2[0,2] += C
+    # s2[1,1] += C
+    # s2[1,2] += C
+    # s2[2,1] += C
+    # s2[2,2] += C
+    # s2[3,3] += (N**1 / alpha)
+
+    # s2 *= (M / (rho_p*N**1))
+    # print("alt s2_0qinv; N**1")
     return s2    
 
 # def sf2_inv(chrom, M2s, K1, rho_p, s_bnd_A, s_bnd_B):
@@ -150,13 +215,26 @@ def sf2_inv_raw(chrom, M2s, K1, rho_p, s_bnd_A, s_bnd_B):
     if np.linalg.norm(K1) < 1e-5:
         return sf2_inv_zeroq(chrom, rho_p, s_bnd_A, s_bnd_B)
 
-    g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  np.array(calc_sf2_chromo_shlk(chrom, M2s, [K1]))
-    ss = alpha#
+    # g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =   (M**2 / N**2) * np.array(calc_sf2_chromo_shlk(chrom, M2s, [K1]))
+    # print("M^2 factor")
+
+    # ss = alpha
                 
-    S2_mat_k1 = (rho_p / M) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
+    # S2_mat_k1 = (rho_p / M) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
+    #                 [cg1[0], g1g1[0], g1g2[0], 0],\
+    #                 [cg2[0], g2g1[0], g2g2[0], 0],\
+    #                 [0, 0, 0, ss]])
+    
+    g1g1, g1g2, g2g1, g2g2, cg1, cg2, cc =  np.array(calc_sf2_chromo_shlk(chrom, M2s, [K1]))
+
+    print("vm=A=1 edits - M = N")
+    ss = alpha * (N/M)
+
+    S2_mat_k1 = (rho_p / N) *  np.array([[cc[0], cg1[0], cg2[0], 0],\
                     [cg1[0], g1g1[0], g1g2[0], 0],\
                     [cg2[0], g2g1[0], g2g2[0], 0],\
                     [0, 0, 0, ss]])
+    
     S2_inv = np.linalg.inv(S2_mat_k1)
     return S2_inv
 
@@ -189,9 +267,15 @@ def gamma3(chrom, s_bnd_A, s_bnd_B, Ks):
     M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
 
 
+    # s3 = ( rho_p/(M) ) *  (M**2 / N**2) *calc_sf3(chrom, M3, [K1], [K2])
+    # s3[3,3,3] *=  1  /  (M**2 / N**2) 
+    # print("M^2 factor")
 
-    s3 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
-            
+
+    print("vm=A=1")
+    s3 = ( rho_p/N ) * calc_sf3(chrom, M3, [K1], [K2])
+    s3[3,3,3] *=  N/M
+    #      
     T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,0,0]])# \Delta_{unred} = T \Delta_{red}           
         
     G3 = np.einsum("ijk,il,jm,kn-> lmn", -s3, S2_inv_red, S2_inv_red_2, S2_inv_red_3)
@@ -212,20 +296,47 @@ def gamma4(chrom, s_bnd_A, s_bnd_B, Ks):
     
     M4 = calc_mon_mat_4(s_bnd_A, s_bnd_B)
     
-    s4 = ( rho_p/(M) ) * calc_sf4(chrom, M4, [K1], [K2], [K3]) 
+    # print("M^2 factor")
+
+    # s4 = ( rho_p/(M) ) *  (M**2 / N**2) * calc_sf4(chrom, M4, [K1], [K2], [K3]) 
+    # s4[3,3,3,3] *=  1  /  (M**2 / N**2)
 
     M3 = calc_mon_mat_3(s_bnd_A, s_bnd_B)
 
-    s3_12 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K2])
-    s3_13 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K3])
-    s3_14 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K1], [K4])
-    s3_23 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K2], [K3])
-    s3_24 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K2], [K4])
-    s3_34 = ( rho_p/(M) ) * calc_sf3(chrom, M3, [K3], [K4])
-    
+    # s3_12 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K1], [K2])
+    # s3_13 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K1], [K3])
+    # s3_14 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K1], [K4])
+    # s3_23 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K2], [K3])
+    # s3_24 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K2], [K4])
+    # s3_34 = ( rho_p/(M) ) * (M**2 / N**2) * calc_sf3(chrom, M3, [K3], [K4])
+
+    # s3_12[3,3,3] *=  1  /  (M**2 / N**2) 
+    # s3_13[3,3,3] *=  1  /  (M**2 / N**2) 
+    # s3_14[3,3,3] *=  1  /  (M**2 / N**2) 
+    # s3_23[3,3,3] *=  1  /  (M**2 / N**2) 
+    # s3_24[3,3,3] *=  1  /  (M**2 / N**2) 
+    # s3_34[3,3,3] *=  1  /  (M**2 / N**2) 
+
     # rho_p = rho_c
     # n_p = np.nan 
     
+    print("vm=a=1")
+    s4 = ( rho_p/(N) ) *  calc_sf4(chrom, M4, [K1], [K2], [K3]) 
+    s3_12 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K1], [K2])
+    s3_13 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K1], [K3])
+    s3_14 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K1], [K4])
+    s3_23 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K2], [K3])
+    s3_24 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K2], [K4])
+    s3_34 = ( rho_p/(N) ) * calc_sf3(chrom, M3, [K3], [K4])
+
+    s4[3,3,3,3] *=  (N/M)
+    s3_12[3,3,3] *=  (N/M)
+    s3_13[3,3,3] *=  (N/M)
+    s3_14[3,3,3] *=  (N/M)
+    s3_23[3,3,3] *=  (N/M)
+    s3_24[3,3,3] *=  (N/M)
+    s3_34[3,3,3] *=  (N/M) 
+
     # calc m2s
     cc_red = eval_and_reduce_cc(M)
     s_cgam0_red = eval_and_reduce_cgam(s_bnd_A)
