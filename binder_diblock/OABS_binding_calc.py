@@ -308,7 +308,7 @@ def calc_binding_states(psol):
     f_ref = np.min(np.array([psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], psol.e_m[0] / 2,  psol.e_m[1] / 2]))
 
     for i, mu1 in enumerate(psol.mu1_arr):
-        for j, mu2 in enumerate(psol.mu1_arr):
+        for j, mu2 in enumerate(psol.mu2_arr):
             s_bind_ave_a, s_bind_ave_b = eval_phi(pa_vec, mu1, mu2, psol.e_m[0], psol.e_m[1], psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], f_ref)
             s_bind_1_soln_arr[i,j,:] = s_bind_ave_a
             s_bind_2_soln_arr[i,j,:] = s_bind_ave_b
