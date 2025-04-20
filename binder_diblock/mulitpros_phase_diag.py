@@ -3,40 +3,6 @@ import os
 import numpy as np
 from OABS_vertex_calc import *
 
-# def worker1(mu1_list, mu2_list, result):
-
-    # printing process id
-    # print("ID of process running worker1: {}".format(os.getpid()))
-
-    # n_bind = 2 #types of proteins/marks
-    # e_m = np.array([1.52, 1.52]) #binding energy FOR F_BIND_ALT
-    # v_int =  np.array([[-4, 4], [4, -4]])
-    # phi_p = 0.7
-    # M = 50
-    # nm = M
-    # pa_vec = np.arange(0, nm, 1) / (nm-1)
-    # pb_vec = 1-pa_vec
-    # poly_marks = [pa_vec, pb_vec]
-    # mu_max_1, mu_min_1, del_mu_1 = mu1_list
-    # mu_max_2, mu_min_2, del_mu_2 = mu2_list
-
-    # # mu_max_1 = -2.8299#8#0.1 #10
-    # # mu_min_1 = -2.87#-9
-    # # del_mu_1 = .001#.5 #0.25
-
-    # # mu_max_2 = -2.899#8#0.1 #10
-    # # mu_min_2 = -2.95#-9
-    # # del_mu_2 = .001#.5 #0.25
-
-    # mu1_arr = np.arange(mu_min_1, mu_max_1, del_mu_1)
-    # mu2_arr = np.arange(mu_min_2, mu_max_2, del_mu_2)
-    # v_s = 1
-    # v_m = 1
-    # N = 5000
-    # b = 1
-
-    # psol = Polymer_soln(n_bind, v_int, e_m, phi_p, poly_marks, mu1_arr, mu2_arr, v_s, v_m, N, b)
-
 def worker1(psol, chi_AB, result):
 
     competitive = True
@@ -226,45 +192,6 @@ def worker1(psol, chi_AB, result):
                 elif minF == bccF_q:
                     phases[j] = 4
 
-
-    
-
-def get_mu_lists(master_mu1_list, master_mu2_list, num_p):
-    eps = 1e-5
-    mu1_lists = np.zeros((num_p, 3))
-    mu2_lists = np.zeros((num_p, 3))
-
-    [mu_max_1_master, mu_min_1_master, del_mu_1_master] = master_mu1_list
-    [mu_max_2_master, mu_min_2_master, del_mu_2_master] = master_mu2_list
-
-    mu1_arr = np.arange(mu_min_1_master, mu_max_1_master, del_mu_1_master)
-    mu2_arr = np.arange(mu_min_2_master, mu_max_2_master, del_mu_2_master)
-
-    # assaigning each process a row of the phase diagram
-    # single value of mu1, full range of mu 2
-
-    if num_p != len(mu1_arr):
-        print(num_p)
-        print(len(mu1_arr))
-        print(mu1_arr)
-        raise Exception("not enough processes to complete diagram")
-    
-    for i in range(num_p): 
-        mu1 = mu1_arr[i]
-
-        mu_min_1 = mu1
-        mu_max_1 = mu1 + eps
-        del_mu_1 = eps*1000
-        mu1_list = [mu_max_1, mu_min_1, del_mu_1]
-        mu1_lists[i] = mu1_list
-
-        mu2_list = [mu_max_2_master, mu_min_2_master, del_mu_2_master]
-        mu2_lists[i] = mu2_list
-
-    return mu1_lists, mu2_lists
-
-
-
 if __name__ == "__main__": 
     # printing main program process id
     print("ID of main process: {}".format(os.getpid()))
@@ -286,33 +213,35 @@ if __name__ == "__main__":
     chi_AB = 13 / (phi_p*N)
     competitive = True
 
-    mu_max_1 = -2.889#-2.8299#8#0.1 #10
-    mu_min_1 = -2.9#-9
-    del_mu_1 = .01#.5 #0.25
-    master_mu1_list = [mu_max_1, mu_min_1, del_mu_1]
+    # #TESTING
+    # mu_max_1 = -2.889#-2.8299#8#0.1 #10
+    # mu_min_1 = -2.9#-9
+    # del_mu_1 = .01#.5 #0.25
+    # mu_max_2 = -2.9099#8#0.1 #10
+    # mu_min_2 = -2.91#-9
+    # del_mu_2 = .01#.5 #0.25
 
-    mu_max_2 = -2.9099#8#0.1 #10
-    mu_min_2 = -2.93#-9
-    del_mu_2 = .01#.5 #0.25
-    master_mu2_list = [mu_max_2, mu_min_2, del_mu_2]
+    # tipzoom
+    mu_max_1 = -2.849#-2.8299#8#0.1 #10
+    mu_min_1 = -2.95#-9
+    del_mu_1 = .001#.5 #0.25
+    mu_max_2 = mu_max_1 
+    mu_min_2 = mu_min_1 
+    del_mu_2 = del_mu_1  
 
     num_proc = 2 
 
-    mu1_lists, mu2_lists = get_mu_lists(master_mu1_list, master_mu2_list, num_proc)
-
     psol_arr = np.zeros(num_proc, dtype = "object")
 
+    mu1_arr = np.arange(mu_min_1, mu_max_1, del_mu_1)
+    mu1_splits = np.array_split(mu1_arr, num_proc)
     mu2_arr_sub = np.arange(mu_min_2, mu_max_2, del_mu_2) # same for all poly solns
+
     result_arr = np.zeros(num_proc, dtype = "object")
     proc_arr = np.zeros(num_proc, dtype = "object")
     for i in range(num_proc):
-        #intiialze appropriate psol object
-        mu1_list = mu1_lists[i,:]
-        mu2_list = mu2_lists[i,:]
-        mu_max_1, mu_min_1, del_mu_1 = mu1_list
-        # mu_max_2, mu_min_2, del_mu_2 = mu2_list
-        mu1_arr_sub = np.arange(mu_min_1, mu_max_1, del_mu_1)
-
+        # #intiialze appropriate psol object
+        mu1_arr_sub = mu1_splits[i]
         psol = Polymer_soln(n_bind, v_int, e_m, phi_p, poly_marks, mu1_arr_sub, mu2_arr_sub, v_s, v_m, N, b)
         psol_arr[i] = psol
         
@@ -335,45 +264,5 @@ if __name__ == "__main__":
     for i in range(num_proc):
         result = np.array(result_arr[i])
         phases_master[i,:] = result
-    np.save("multipros_phases_test", phases_master)
-
-    #     phases[0]
-    # phases = np.vstack((result1, result2))
-
-        # mu1_arr_sub = 
-    # mu_max_1_1, mu_min_1_1, del_mu_1_1 = mu1_list
-    # mu_max_2, mu_min_2, del_mu_2 = mu2_list
-
-    # mu1_arr = np.arange(mu_min_1, mu_max_1, del_mu_1)
-    # mu2_arr = np.arange(mu_min_2, mu_max_2, del_mu_2)
-
-    # psol1 = Polymer_soln(n_bind, v_int, e_m, phi_p, poly_marks, mu1_arr, mu2_arr, v_s, v_m, N, b)
-
-
-    # result1 = multiprocessing.Array('d', len(mu2_arr_sub))
-    # result2 = multiprocessing.Array('d', len(mu2_arr_sub))
-    # result3 = multiprocessing.Array('i', len(mu2_arr))
-
-    # print("MU1_list", mu1_lists[0,:])
-    # # creating processes
-    # p1 = multiprocessing.Process(target=worker1, args=(mu1_lists[0,:], mu2_lists[0,:], result1))
-    # p2 = multiprocessing.Process(target=worker1, args=(mu1_lists[1,:], mu2_lists[1,:], result2))
-
-    # starting processes
-    # p1.start()
-    # p2.start()
-    # process IDs
-    # print("ID of process p1: {}".format(p1.pid))
-    # print("ID of process p2: {}".format(p2.pid))
-
-    # wait until processes are finished
-    # p1.join()
-    # print("Result(in main program): {}".format(result[:])) 
-    # print(np.array(result1))
-    # p2.join()
-    # print(np.array(result2))
-
-    # print(np.vstack((result1, result2)))
-    # phases = np.vstack((result1, result2))
-    # np.save("multipros_phases_test", phases)
-    # return [5,6]
+    # np.save("multipros_phases_test", phases_master)
+    np.save("OABS_phases_arr_tipzoom_chiABphipNeq"+str(int(chi_AB*phi_p*N))+"N="+str(int(N)), phases_master)
