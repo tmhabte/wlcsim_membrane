@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import numpy as np
 from OABS_vertex_calc import *
+import time
 
 def worker1(psol, chi_AB, result):
 
@@ -195,6 +196,8 @@ def worker1(psol, chi_AB, result):
 if __name__ == "__main__": 
     # printing main program process id
     print("ID of main process: {}".format(os.getpid()))
+    start = time.time()
+
     n_bind = 2 #types of proteins/marks
     e_m = np.array([1.52, 1.52]) #binding energy FOR F_BIND_ALT
     v_int =  np.array([[-4, 4], [4, -4]])
@@ -229,7 +232,7 @@ if __name__ == "__main__":
     mu_min_2 = mu_min_1 
     del_mu_2 = del_mu_1  
 
-    num_proc = 2 
+    num_proc = 10 
 
     psol_arr = np.zeros(num_proc, dtype = "object")
 
@@ -266,3 +269,5 @@ if __name__ == "__main__":
         phases_master[i,:] = result
     # np.save("multipros_phases_test", phases_master)
     np.save("OABS_phases_arr_tipzoom_chiABphipNeq"+str(int(chi_AB*phi_p*N))+"N="+str(int(N)), phases_master)
+
+    print(np.round((time.time() - start)/(60),4), "mins elapsed")
