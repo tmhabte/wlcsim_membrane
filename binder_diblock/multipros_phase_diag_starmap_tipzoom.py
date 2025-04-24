@@ -240,25 +240,25 @@ if __name__ == "__main__":
     # num_proc = 3
     # #print("test mus")
     
-    # # tipzoom
-    # print("tipzoom")
-    # mu_max_1 = -2.849#-2.8299#8#0.1 #10
-    # mu_min_1 = -2.95#-9
-    # del_mu_1 = .0025#.5 #0.25
-    # mu_max_2 = mu_max_1 
-    # mu_min_2 = mu_min_1 
-    # del_mu_2 = del_mu_1  
-    # num_proc = 10 #10 
-
-    #veryzoom
-    print("veryzoom")
-    mu_max_1 = -2.6#-2.8299#8#0.1 #10
-    mu_min_1 = -3#-9
-    del_mu_1 = .005#.5 #0.25
+    # tipzoom
+    print("tipzoom")
+    mu_max_1 = -2.851#-2.8299#8#0.1 #10
+    mu_min_1 = -2.95#-9
+    del_mu_1 = .0025#.5 #0.25
     mu_max_2 = mu_max_1 
     mu_min_2 = mu_min_1 
-    del_mu_2 = del_mu_1
-    num_proc = 10 
+    del_mu_2 = del_mu_1  
+    num_proc = 10 #10 
+
+    # #veryzoom
+    # print("veryzoom")
+    # mu_max_1 = -2.6#-2.8299#8#0.1 #10
+    # mu_min_1 = -3#-9
+    # del_mu_1 = .005#.5 #0.25
+    # mu_max_2 = mu_max_1 
+    # mu_min_2 = mu_min_1 
+    # del_mu_2 = del_mu_1
+    # num_proc = 10 
 
     print("number of processes: ", num_proc)
     psol_arr = np.zeros(num_proc, dtype = "object")
@@ -280,7 +280,7 @@ if __name__ == "__main__":
 
     p = multiprocessing.Pool()
     result_arr = p.starmap(calc_phases, args_arr)
-    print(result_arr)
-    np.save("OABS_phases_arr_veryzoom_fine_chiABphipNeq"+str(int(chi_AB*phi_p*N))+"N="+str(int(N)), result_arr)
+    # print(result_arr)
+    np.save("OABS_phases_arr_tipzoom_fine_chiABphipNeq"+str(int(chi_AB*phi_p*N))+"N="+str(int(N)), result_arr)
 
     print(np.round((time.time() - start)/(60),4), "mins elapsed")

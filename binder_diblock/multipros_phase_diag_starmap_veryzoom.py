@@ -242,7 +242,7 @@ if __name__ == "__main__":
     
     # # tipzoom
     # print("tipzoom")
-    # mu_max_1 = -2.849#-2.8299#8#0.1 #10
+    # mu_max_1 = -2.851#-2.8299#8#0.1 #10
     # mu_min_1 = -2.95#-9
     # del_mu_1 = .0025#.5 #0.25
     # mu_max_2 = mu_max_1 
@@ -280,7 +280,7 @@ if __name__ == "__main__":
 
     p = multiprocessing.Pool()
     result_arr = p.starmap(calc_phases, args_arr)
-    print(result_arr)
+    # print(result_arr)
     np.save("OABS_phases_arr_veryzoom_fine_chiABphipNeq"+str(int(chi_AB*phi_p*N))+"N="+str(int(N)), result_arr)
 
     print(np.round((time.time() - start)/(60),4), "mins elapsed")
