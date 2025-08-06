@@ -5,8 +5,8 @@ def gamma2_chis(psol, s_bnd_A, s_bnd_B, K, chis):
     # s_bind arrays of appropriate mu1, mu2
     # polymer-solv chi
 
-    phi_p = psol.phi_p
-    N = psol.N
+    # phi_p = psol.phi_p
+    # N = psol.N
     # v_int = psol.v_int
 
     chi_AP, chi_BP, chi_AB, chi_PS, chi_AS, chi_BS = chis
@@ -16,20 +16,12 @@ def gamma2_chis(psol, s_bnd_A, s_bnd_B, K, chis):
 
     # M2s = calc_mon_mat_2(s_bnd_A, s_bnd_B, competitive)
     corrs = [s_bnd_A, s_bnd_B]
-    S2_mat = calc_sf2(psol, corrs, [K])
+    S2_mat = calc_sf2(psol, corrs, np.array([K]))
+    # print(S2_mat)
     # S2_mat[-1,-1] *= (N / M)
 
     #invert, calc g2
     S2_inv = np.linalg.inv(S2_mat)
-
-    # # P A_bound B_bound A_unbound B_unbound S
-    # # constants: in limit of N_A = N_B = 0, should be equivalent to OABS binder theory
-    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_P, S_BP*phi_p*N_P, 0, 0, 0],
-    #       [S_AP*phi_p*N_P, S_AA*phi_p*N_P, S_AB*phi_p*N_P, 0, 0, 0],
-    #       [S_BP*phi_p*N_P, S_AB*phi_p*N_P, S_BB*phi_p*N_P, 0, 0, 0],
-    #       [0, 0, 0, S_AuAu*phi_A_u*N_A,0 ,0],
-    #       [0, 0, 0, 0, S_BuBu*phi_B_u*N_B, 0],
-    #       [0, 0, 0, 0, 0, S_ss]]
     
     #gam-gam
     S2_inv[0,1] += chi_AP
