@@ -83,10 +83,10 @@ def calc_sf2(psol, corrs, k):
     C = np.zeros((M,M))
     # diagonal
     index = (j1 == j2)
-    integral =  (2/x_A**2)*(x_A + np.exp(-x_A) - 1)
+    integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))[0]
     corr = sA
     C[np.where((index) != 0)] += corr * integral
-
+#     print("removed diag")
     #off diagonal
     index = (j2 != j1)
     delta = np.abs(j1 - j2)
@@ -104,14 +104,13 @@ def calc_sf2(psol, corrs, k):
     integral =  (2/x_B**2)*(x_B + np.exp(-x_B) - 1)
     corr = sB
     C[np.where((index) != 0)] += corr * integral
-
+#     print("removed diag")
     #off diagonal
     index = (j2 != j1)
     delta = np.abs(j1 - j2)
     integral = (1/x_B)**2 * (1- np.exp(-x_B))**2 * np.exp(-x_del*delta)
     corr = sBsB
     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
-
     S_BB = np.sum(C)
 
 
@@ -148,22 +147,48 @@ def calc_sf2(psol, corrs, k):
     S_ss = solv_cons
 
     # P A_bound B_bound A_unbound B_unbound S
-    # constants: 
+    # constants: np from z_P; Ns from sf definiton, V_sys form E density
+    # assume v_P = v_A = v_B
     # AP: n_p N_A N_P / V_sys = N_A phi_p
     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+
     # AuAu: N_A N_A / V_sys N_A , but V_sys goes to exp[log(\bar{z}_p/V_sys)] term?
+    # AuAu alt: n_A N_A N_A / V_sys = phi_A*N_A
 #     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0, 0, 0], \
 #           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P, S_AB*(phi_p*N_A*N_B)/N_P, 0, 0, 0],\
 #           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P, 0, 0, 0],\
 #           [0, 0, 0, S_AuAu*N_A, 0, 0],\
 #           [0, 0, 0, 0, S_BuBu*N_B, 0],\
 #           [0, 0, 0, 0, 0, S_ss]]
-    
+
+    # P A_tot B_tot S    
     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*N_B, 0],\
           [0, 0, 0, S_ss]]
+    return S2  
+
+#     # "intuitive" AuAu, BuBu sfs
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*phi_A*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_B*N_B, 0],\
+#           [0, 0, 0, S_ss]]
+#     return S2  
+
+#     print("IGNORNING UNBOUND POLY")
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P , 0],\
+#           [0, 0, 0, S_ss]]
+    
+#     print("IGNORNING UNBOUND POLY, IDENTICAL PREFACTORS. NOT USED IN PLOTS, can basically just do NA=NP=NB")
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_P, S_BP*phi_p*N_P, 0,], \
+#           [S_AP*phi_p*N_P, S_AA*phi_p*N_P, S_AB*phi_p*N_P, 0],\
+#           [S_BP*phi_p*N_P, S_AB*phi_p*N_P, S_BB*phi_p*N_P, 0],\
+#           [0, 0, 0, S_ss]]
+
     return S2
+    return S2, S_AuAu*N_A, S_BuBu*N_B
     # delta = j1 - j2
 
     
