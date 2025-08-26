@@ -219,34 +219,57 @@ def calc_sf2(psol, corrs, k):
 
 import numpy as np
 
+# def S_AAA31_new(k_alp, k_bet, b, N_A, tol=1e-10):
+#     """
+#     j3 = j2 = j1
+#     Triple integral:
+#     I = \int_0^N dn3 \int_0^n3 dn2 \int_0^n2 dn1 
+#         exp[-x1 (n3-n2) - x2 (n2-n1)]
+#     """
+#     x1 = (b**2/6) * k_alp**2
+#     x2 = (b**2/6) * k_bet**2   
+#     # Case 1: both zero
+#     if np.isclose(x1, 0, atol=tol) and np.isclose(x2, 0, atol=tol):
+#         return N_A**3 / 6.0 
+    
+#     # Case 2: x1 = 0
+#     if np.isclose(x1, 0, atol=tol):
+#         return (N_A/x2 - (1 - np.exp(-x2*N_A))/x2**2) * N_A
+    
+#     # Case 3: x2 = 0
+#     if np.isclose(x2, 0, atol=tol):
+#         return (N_A/x1 - (1 - np.exp(-x1*N_A))/x1**2) * N_A
+    
+#     # Case 4: x1 = x2
+#     if np.isclose(x1, x2, atol=tol):
+#         x = x1
+#         term1 = N_A/x - (1 - np.exp(-x*N_A))/x**2
+#         term2 = (N_A*np.exp(-x*N_A))/x
+#         return (term1 - term2) / x
+    
+#     # General case
+#     termA = N_A/x1 - (1 - np.exp(-x1*N_A))/x1**2
+#     termB = ((1 - np.exp(-x2*N_A))/x2 - (1 - np.exp(-x1*N_A))/x1) / (x1 - x2)
+#     return (termA - termB) / x2
+
 def S_AAA31(k_alp, k_bet, b, N_A):
     """
     j3 = j2 = j1
     Triple integral:
-    I = ∫_0^N dn3 ∫_0^n3 dn2 ∫_0^n2 dn1 
-        exp[-la (n3-n2) - mu (n2-n1)]
-    
-    Parameters
-    ----------
-    la : float
-        λ = (b_A^2/6) * k_α^2
-    mu : float
-        μ = (b_A^2/6) * k_β^2
-    N : float
-        Chain length N_A
-    
-    Returns
-    -------
-    float
-        Value of the integral
+    I = \int_0^N dn3 \int_0^n3 dn2 \int_0^n2 dn1 
+        exp[-x1 (n3-n2) - x2 (n2-n1)]
     """
     x1 = (b**2/6) * k_alp**2
     x2 = (b**2/6) * k_bet**2
 
-    # Handle λ ≈ μ with a tolerance
+    # Handle x1 ≈ x2 with a tolerance
     if np.isclose(x1, x2, atol=1e-12):
         return (N_A/x1**2 
                 + (N_A*x1**2*np.exp(-x1*N_A) - 2*x1*(1 - np.exp(-x1*N_A)))/x1**4)
+    elif np.isclose(x2, 0, atol=1e-12):
+        return (2-2*np.exp(-x1*N_A) - 2*x1*N_A + N_A**2*x1**2)/ (2*x1**3)
+    elif np.isclose(x1, 0, atol=1e-12):
+        return (2-2*np.exp(-x2*N_A) - 2*x2*N_A + N_A**2*x2**2)/ (2*x2**3)
     else:
         return (N_A/(x1*x2) 
                 + (1 - np.exp(-x1*N_A))/(x1**2*(x1 - x2)) 
@@ -257,17 +280,9 @@ import numpy as np
 def S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
     """
     Compute
-    I = 2 * ∫_0^{N_A} dn3 ∫_0^{N_A} dn2 ∫_0^{n2} dn1 exp[-a*k3^2*n1 - a*k2^2*(n2-n1)
-                                                     - C*k3^2 - a*k3^2*n3]
-    where a = bA^2/6, C = (1/6)*(Nchain/(M-1))*bP^2 * (j3-j1).
-    Parameters:
-      k2, k3   : wavevector magnitudes (floats)
-      bA       : Kuhn length on A side chains
-      bP       : backbone Kuhn length
-      N_P   : N in backbone prefactor (from user expression)
-      M        : M in backbone prefactor (from user expression)
-      jdiff    : (j3 - j1) integer or float
-      N_A      : upper limit for n integrals
+    I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
+                                                     - X_del*k3^2 - bA^2/6*k3^2*n3]
+    X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
     """
     jdiff = j3 - j1
     a = bA**2 / 6.0
@@ -353,10 +368,10 @@ def calc_sf3(psol, corrs, k, k2):
     sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)
 
     
-    x_p = (1/6)*N_P*b_P**2*k**2
-    x_A = (1/6)*N_A*b_A**2*k**2
-    x_B = (1/6)*N_B*b_B**2*k**2
-    x_del = (1/6)*(N_P/(M-1))*b_P**2*k**2
+    # x_p = (1/6)*N_P*b_P**2*k**2
+    # x_A = (1/6)*N_A*b_A**2*k**2
+    # x_B = (1/6)*N_B*b_B**2*k**2
+    # x_del = (1/6)*(N_P/(M-1))*b_P**2*k**2
     grid = np.indices((M,M,M))
     j1 = grid[0]
     j2 = grid[1] 
