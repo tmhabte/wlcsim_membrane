@@ -277,54 +277,81 @@ def S_AAA31(k_alp, k_bet, b, N_A):
 
 import numpy as np
 
-def S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
-    """
+def S_AAA32_laplace(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+    # FROM ANDY- laplace calculation, only for k2 != k3
+    assert k2 != k3
+    x1 = (bA**2/6) * k2**2 * N_A
+    x3 = (bA**2/6) * k3**2 * N_A
+    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+    return 2\
+    * np.exp(-delJ3) * ( (1 / (x1*x3)) \
+    - (np.exp(-x1) / (x1 * (x3 - x1))) \
+    - (np.exp(-x3) / (x3 * (x1 - x3)))) \
+    * (1 / x3) * (1 - np.exp(-x3)) 
+
+
+def S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1, tol = 1e-10):
+    """WRA
     Compute
     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
+    Branches:
+      1) x2 == x3
+      2) x2 == 0
+      3) x3 == 0 and delJ3 == 0 (Mathematica simplified result)
+      4) general case
     """
-    jdiff = j3 - j1
-    a = bA**2 / 6.0
-    C = (1.0/6.0) * (N_P / (M - 1.0)) * (bP**2) * jdiff
+    x2 = (bA**2/6) * k2**2
+    x3 = (bA**2/6) * k3**2
+    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+    
+    #--- Case 1: x2 == x3 ---
+    if np.isclose(x2, x3, atol=tol):
+        num = (
+            2.0
+            * np.exp(-delJ3 - 2.0 * N_A * x3)
+            * ( -1.0 + np.exp(N_A * x3) )
+            * ( -1.0 + np.exp(N_A * x3) - N_A * x3 )
+        )
+        denom = x3**3
+        return num / denom
 
-    k2sq = float(k2**2)
-    k3sq = float(k3**2)
-    Delta = k3sq - k2sq
+    # --- Case 2: x2 == 0 ---
+    if np.isclose(x2, 0.0, atol=tol):
+        num = (
+            np.exp(-delJ3 - 2.0 * N_A * x3)
+            * ( -1.0 + np.exp(N_A * x3) )
+            * ( 2.0 + 2.0 * np.exp(N_A * x3) * (-1.0 + N_A * x3) )
+        )
+        denom = x3**3
+        return num / denom
 
-    # n3 integral factor
-    if np.isclose(k3sq, 0.0):
-        A3 = N_A
-    else:
-        A3 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq)
+    # --- Case 3: x3 == 0 ---
+    if np.isclose(x3, 0.0, atol=tol): #and np.isclose(delJ3, 0.0, atol=tol):
+        if np.isclose(x2, 0.0, atol=tol):
+            # Limit x2 -> 0 using series expansion: (-1 + exp(-N_A x2) + N_A x2)/x2^2 -> N_A^2
+            return N_A**2
+        # Mathematica simplified numerator for x3=0, delJ3=0
+        return np.ones_like(delJ3)*2.0 * N_A * (-1.0 + np.exp(-N_A * x2) + N_A * x2) / (x2**2)
 
-    # double integral I12
-    tol = 1e-12
-    if np.isclose(Delta, 0.0, atol=tol):
-        # k2^2 == k3^2 == kappa
-        kappa = k3sq
-        if np.isclose(kappa, 0.0):
-            # both zero
-            I12 = 0.5 * N_A**2  # ∫_0^N dn2 ∫_0^{n2} dn1 1 = N^2/2
-        else:
-            I12 = (1.0 / (a * kappa)) * ( (1.0 - np.exp(-a * kappa * N_A)) / (a * kappa)
-                                         - (1.0 - np.exp(-2.0 * a * kappa * N_A)) / (2.0 * a * kappa) )
-    else:
-        # general case
-        term1 = (1.0 - np.exp(-a * k2sq * N_A)) / (a * k2sq) if not np.isclose(k2sq, 0.0) else N_A
-        term2 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq) if not np.isclose(k3sq, 0.0) else N_A
-        I12 = (1.0 / (a * Delta)) * (term1 - term2)
-
-    I = 2.0 * np.exp(-C * k3sq) * A3 * I12
-    return I
+    # --- General case ---
+    num = (
+        2*np.exp(-delJ3 - N_A * (x2 + 3.0 * x3))
+        * ( -1.0 + np.exp(N_A * x3) )
+        * ( np.exp(N_A * (x2 + x3)) * x2
+            - np.exp(2.0 * N_A * x3) * x3
+            + np.exp(N_A * (x2 + 2.0 * x3)) * (-x2 + x3) )
+    )
+    denom = x2 * (x3**2) * (-x2 + x3)
+    
+    return num / denom
 
 def S_AAA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
-    """
+    """ 
     Compute the triple integral:
-    I = ∫_0^N_A dn1 ∫_0^N_A dn2 ∫_0^N_A dn3 exp[ ... ]
-    with factorized exponent structure.
+    I = \int_0^N_A dn1 \int_0^N_A dn2 \int_0^N_A dn3 exp[ ... ]
     """
-    # Coefficients for chain contributions
     a1 = (bA**2 / 6.0) * k1**2
     a2 = (bA**2 / 6.0) * k2**2
     a3 = (bA**2 / 6.0) * k3**2
@@ -338,6 +365,194 @@ def S_AAA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
         return (1 - np.exp(-a * N_A)) / a if a > 1e-14 else N_A
     
     return const * f(a1) * f(a2) * f(a3)
+
+import numpy as np
+
+def S_AAP31(k_alpha, k_beta, bA, N_A):
+    """
+    Compute the AAP31 case 1 integral:
+    I = ∫_0^N_A dn3 ∫_0^n3 dn2 exp[-(1/6)bA^2 k_alpha^2 (n3-n2) - (1/6)bA^2 k_beta^2 n2]
+    """
+    a_alpha = (bA**2 / 6.0) * k_alpha**2
+    a_beta  = (bA**2 / 6.0) * k_beta**2
+    
+    def f(a):
+        if np.isclose(a, 0.0, atol=1e-14):
+            return N_A
+        return (1 - np.exp(-a * N_A)) / a
+    
+    if np.isclose(a_alpha, a_beta, atol=1e-14):
+        # limit case: a_alpha = a_beta
+        return 0.5 * f(a_alpha) * N_A
+    else:
+        return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
+
+import numpy as np
+
+# def S_AAP32(k2, k3, bA, bP, N_A, N_P, n_i):
+def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+     
+      
+    """
+    Compute the AAP32 (case 2) integral:
+    
+    I = (2){ PartA + PartB } 
+    with structure given in the problem.
+    """
+    a2 = (bA**2 / 6.0) * k2**2
+    a3 = (bA**2 / 6.0) * k3**2
+    c3 = (bP**2 / 6.0) * k3**2
+    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+
+    # G(a2,a3,N_A): n2,n1 contribution
+    if np.isclose(a2, a3, atol=1e-14):
+        G = (1.0 / a2**2) * (1 - np.exp(-a2 * N_A) * (1 + a2 * N_A))
+    else:
+        G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
+    
+    # n3 contribution: part A + part B
+    n3_factor = np.exp(-delJ3)
+
+    # if np.isclose(c3, 0.0, atol=1e-14):
+    #     n3_factor = (N_P - n_i) + n_i  # just N_P
+    # else:
+        # partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+        # partB = (1 - np.exp(-c3 * n_i)) / c3
+        # n3_factor = partA + partB
+    
+    return 2.0 * G * n3_factor
+import numpy as np
+
+def S_AAP33(k1, k2, k3, bA, bB, bP, N_A, N_P, M, j1, j2, j3):
+    """
+    Compute the AAP33 integral as defined:
+    Sum of two n3-ranged integrals over n1,n2.
+    """
+    a1 = (bA**2 / 6.0) * k1**2
+    a2 = (bB**2 / 6.0) * k2**2
+    # c3 = (bP**2 / 6.0) * k3**2
+    
+    # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+    
+    def f(a, L):
+        if np.isclose(a, 0.0, atol=1e-14):
+            return L
+        return (1 - np.exp(-a * L)) / a
+    
+    n1n2_factor = f(a1, N_A) * f(a2, N_A)
+    
+    n3_factor = np.exp(
+        - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
+    )
+    # if np.isclose(c3, 0.0, atol=1e-14):
+    #     n3_factor = N_P
+    # else:
+    #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+    #     partB = (1 - np.exp(-c3 * n_i)) / c3
+    #     n3_factor = partA + partB
+    
+    return n1n2_factor * n3_factor
+
+import numpy as np
+
+def S_APA32(k1, k3, bA1, bA3, bP, N_A, N, M, j3, j1):
+    """
+    Compute the APA32 integral:
+    I = ∫_0^{N_A} dn1 ∫_0^{N_A} dn3 exp[-a1*n1 - B - a3*n3]
+    """
+    a1 = (bA1**2 / 6.0) * k1**2
+    a3 = (bA3**2 / 6.0) * k3**2
+    B  = (N / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
+    
+    def f(a, L):
+        if np.isclose(a, 0.0, atol=1e-14):
+            return L
+        return (1 - np.exp(-a * L)) / a
+    
+    return np.exp(-B) * f(a1, N_A) * f(a3, N_A)
+def S_APA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
+    """
+    Compute the AAP33 integral as defined:
+    Sum of two n3-ranged integrals over n1,n2.
+    """
+    a1 = (bA**2 / 6.0) * k1**2
+    a2 = (bA**2 / 6.0) * k3**2
+    # c3 = (bP**2 / 6.0) * k3**2
+    
+    # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+    
+    def f(a, L):
+        if np.isclose(a, 0.0, atol=1e-14):
+            return L
+        return (1 - np.exp(-a * L)) / a
+    
+    n1n2_factor = f(a1, N_A) * f(a2, N_A)
+    
+    n3_factor = np.exp(
+        - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
+    )
+    # if np.isclose(c3, 0.0, atol=1e-14):
+    #     n3_factor = N_P
+    # else:
+    #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+    #     partB = (1 - np.exp(-c3 * n_i)) / c3
+    #     n3_factor = partA + partB
+    
+    return n1n2_factor * n3_factor
+
+
+def S_APP31(k3, bA, N_A):
+    """
+    compute
+    I = \int_0^{N_A} dn3 exp[- (1/6) bA^2 k3^2 * n3]
+    """
+    a3 = (bA**2 / 6.0) * k3**2
+    
+    if np.isclose(a3, 0.0, atol=1e-14):
+        return N_A
+    return (1 - np.exp(-a3 * N_A)) / a3
+
+import numpy as np
+
+def S_APP32(k1, k3, bA, bP, N_A, N_P, M, j3, j1):
+    """    
+    I = ∫_0^{N_A} dn1 ∫_{n_i}^{N_P} dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n3 - n_i)]
+      + ∫_0^{N_A} dn1 ∫_0^{n_i}  dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n_i - n3)]
+    """
+    a1 = (bA**2 / 6.0) * k1**2
+    a3 = (bP**2 / 6.0) * k3**2
+    B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
+
+    # n1 integral
+    if np.isclose(a1, 0.0, atol=1e-14):
+        F1 = N_A
+    else:
+        F1 = (1 - np.exp(-a1 * N_A)) / a1
+
+    # n3 integrals
+    # if np.isclose(a3, 0.0, atol=1e-14):
+    #     G = (N_P - n_i) + n_i  # just N_P
+    # else:
+    #     G1 = (1 - np.exp(-a3 * (N_P - n_i))) / a3
+    #     G2 = (1 - np.exp(-a3 * n_i)) / a3
+    #     G = G1 + G2
+
+    return F1 * np.exp(-B)#G
+
+def S_APP33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
+    a1 = (bA**2 / 6.0) * k1**2
+    B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j2)
+    C  = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+
+    # n1 integral
+    if np.isclose(a1, 0.0, atol=1e-14):
+        F1 = N_A
+    else:
+        F1 = (1 - np.exp(-a1 * N_A)) / a1
+
+
+    return F1 * np.exp(-B)  * np.exp(-C)#G
+
 
 def calc_sf3(psol, corrs, k, k2):
     v_P = psol.v_p
@@ -411,13 +626,14 @@ def calc_sf3(psol, corrs, k, k2):
             
             S3_AAA[i] += np.sum(sA*S_AAA31(kA, kB, b_A, N_A))
             # S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1)
-            index = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] != ordered_js[-1])
+            index = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
+
             I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
             corr = sAsAsA / sA[ordered_js[0]] # <s_j1 s_j3> POSSIBLE SOURCE OF NANS np.nans. if so must do #corr= np.einsum("i,j,k->ijk", vals, np.ones(len(vals)), vals)
             S3_AAA[i] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
 
-            index = (ordered_js[0] != ordered_js[1]) * (ordered_js[0] != ordered_js[2]) * (ordered_js[1] != ordered_js[2])
-            # (k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3)
+            # index = (ordered_js[0] != ordered_js[1]) * (ordered_js[0] != ordered_js[2]) * (ordered_js[1] != ordered_js[2])
+            index = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
             I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2])
             S3_AAA[i] += np.sum(sAsAsA[np.where(index != 0)]*I[np.where(index != 0)])
 
@@ -512,3 +728,92 @@ def calc_case_s3(C, xm_A, xm_B, ordered_js):
                                     * constant[np.where(index != 0)]\
                                     * integral
     return C
+
+
+# def S_AAA32_OLD(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+#     """GPT
+#     Compute
+#     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
+#                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
+#     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
+#     """
+#     jdiff = j3 - j1
+#     a = bA**2 / 6.0
+#     C = (1.0/6.0) * (N_P / (M - 1.0)) * (bP**2) * jdiff
+
+#     k2sq = float(k2**2)
+#     k3sq = float(k3**2)
+#     Delta = k3sq - k2sq
+
+#     # n3 integral factor
+#     if np.isclose(k3sq, 0.0):
+#         A3 = N_A
+#     else:
+#         A3 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq)
+
+#     # double integral I12
+#     tol = 1e-12
+#     if np.isclose(Delta, 0.0, atol=tol):
+#         # k2^2 == k3^2 == kappa
+#         kappa = k3sq
+#         if np.isclose(kappa, 0.0):
+#             # both zero
+#             I12 = 0.5 * N_A**2  # ∫_0^N dn2 ∫_0^{n2} dn1 1 = N^2/2
+#         else:
+#             I12 = (1.0 / (a * kappa)) * ( (1.0 - np.exp(-a * kappa * N_A)) / (a * kappa)
+#                                          - (1.0 - np.exp(-2.0 * a * kappa * N_A)) / (2.0 * a * kappa) )
+#     else:
+#         # general case
+#         term1 = (1.0 - np.exp(-a * k2sq * N_A)) / (a * k2sq) if not np.isclose(k2sq, 0.0) else N_A
+#         term2 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq) if not np.isclose(k3sq, 0.0) else N_A
+#         I12 = (1.0 / (a * Delta)) * (term1 - term2)
+
+#     I = 2.0 * np.exp(-C * k3sq) * A3 * I12
+#     return I
+
+# def S_AAA32_OLD2(k2, k3, bA, bP, N_A, N_P, M, j3, j1, tol=1e-12):
+#     """
+#     Compute
+#     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
+#                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
+#     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
+#     Triple integral with all special cases handled in closed form.
+#     """
+#     jdiff = j3 - j1
+#     a = bA**2 / 6.0
+#     C = (1.0/6.0) * (N_P / (M - 1.0)) * (bP**2) * jdiff
+
+#     k2sq = float(k2**2)
+#     k3sq = float(k3**2)
+
+#     # Outer n3 factor
+#     if np.isclose(k3sq, 0.0, atol=tol):
+#         A3 = N_A
+#     else:
+#         A3 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq)
+
+#     # Inner double integral
+#     if np.isclose(k2sq, 0.0, atol=tol) and np.isclose(k3sq, 0.0, atol=tol):
+#         # both zero
+#         I12 = 0.5 * N_A**2
+#     elif np.isclose(k2sq, 0.0, atol=tol):
+#         # k2=0, k3≠0
+#         I12 = N_A/(a*k3sq) - (1.0 - np.exp(-a*k3sq*N_A))/(a*k3sq)**2
+#     elif np.isclose(k3sq, 0.0, atol=tol):
+#         # k3=0, k2≠0
+#         I12 = N_A/(a*k2sq) - (1.0 - np.exp(-a*k2sq*N_A))/(a*k2sq)**2
+#     elif np.isclose(k2sq, k3sq, atol=tol):
+#         # equal nonzero
+#         kappa = k2sq
+#         I12 = (1.0/(a*kappa)) * (
+#             (1.0 - np.exp(-a*kappa*N_A))/(a*kappa)
+#           - (1.0 - np.exp(-2.0*a*kappa*N_A))/(2.0*a*kappa)
+#         )
+#     else:
+#         # general case
+#         I12 = (1.0/(a*(k3sq-k2sq))) * (
+#             (1.0 - np.exp(-a*k2sq*N_A))/(a*k2sq)
+#           - (1.0 - np.exp(-a*k3sq*N_A))/(a*k3sq)
+#         )
+
+#     return 2.0 * np.exp(-C * k3sq) * A3 * I12
