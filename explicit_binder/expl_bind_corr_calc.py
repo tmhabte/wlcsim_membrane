@@ -554,266 +554,199 @@ def S_APP33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
     return F1 * np.exp(-B)  * np.exp(-C)#G
 
 
-def calc_sf3(psol, corrs, k, k2):
-    v_P = psol.v_p
-    N_P = psol.N_P
-    b_P = psol.b_P
-    v_A = psol.v_A
-    N_A = psol.N_A
-    b_A = psol.b_A
-    v_B = psol.v_B
-    N_B = psol.N_B
-    b_B = psol.b_B
-    M = psol.M
-    solv_cons = psol.solv_cons
-    phi_p = psol.phi_p
-    phi_A = psol.phi_A
-    phi_B = psol.phi_B
+def calc_sf3(
+    sA, sB, k1, k2, k12,
+    b_A=1.0, b_B=1.0, b_P=1.0,
+    N_A=100, N_B=100, N_P=1000, M=50
+):
+    """
+    Compute third-order structure factors for a single (k1,k2,k12).
+    Returns S3_arr with axes [species1, species2, species3] where
+      0 -> P, 1 -> A, 2 -> B
+    """
 
-    phi_Ab = psol.phi_Ab
-    phi_Au = psol.phi_Au
-    phi_Bb = psol.phi_Bb
-    phi_Bu = psol.phi_Bu
-
-    sA, sB = corrs
-    sAsA = np.outer(sA, sA)
-    sBsB = np.outer(sB, sB)
-    sAsB = np.outer(sA, sB)
-
+    # correlations
+    sP = np.ones_like(sA)
     sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)
+    sAsAsP = np.einsum("i,j,k->ijk", sA, sA, sP)
+    sAsPsP = np.einsum("i,j,k->ijk", sA, sP, sP)
+    sAsBsP = np.einsum("i,j,k->ijk", sA, sB, sP)
 
-    
-    # x_p = (1/6)*N_P*b_P**2*k**2
-    # x_A = (1/6)*N_A*b_A**2*k**2
-    # x_B = (1/6)*N_B*b_B**2*k**2
-    # x_del = (1/6)*(N_P/(M-1))*b_P**2*k**2
-    grid = np.indices((M,M,M))
-    j1 = grid[0]
-    j2 = grid[1] 
-    j3 = grid[2] 
+    sBsBsB = np.einsum("i,j,k->ijk", sB, sB, sB)
+    sBsBsP = np.einsum("i,j,k->ijk", sB, sB, sP)
+    sBsPsP = np.einsum("i,j,k->ijk", sB, sP, sP)
 
-    S3_AAA = np.zeros(len(k))
+    sAsAsB = np.einsum("i,j,k->ijk", sA, sA, sB)
+    sAsBsB = np.einsum("i,j,k->ijk", sA, sB, sB)
 
-    for i in range(len(k)):
-        k_1 = k[i]
-        k_2 = k2[i]
-        k_12 = k_1 + k_2
+    # monomer index grid
+    j1, j2, j3 = np.indices((M, M, M))
 
-        # CASE 1; kA = k1 + k2, kB = k_1; S3 > S2 > S1 and S1 > S2 > S3
-        case1 = [[k_12, k_1], [j3, j2, j1]]
-        case1_deg = [[k_1, k_12], [j1, j2, j3]]
+    # case permutations
+    case1     = [[k12, k1],  [j3, j2, j1]]
+    case1_deg = [[k1,  k12], [j1, j2, j3]]
+    case2     = [[k2,  k12], [j2, j1, j3]]
+    case2_deg = [[k12, k2],  [j3, j1, j2]]
+    case3     = [[-k2, k1],  [j2, j3, j1]]
+    case3_deg = [[k1, -k2],  [j1, j3, j2]]
+    case_arr  = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
 
-        # CASE 2; kA = k2, kB = k1 + k2; S2 > S1 > S3 and S3 > S1 > S2
-        case2 = [[k_2, k_12], [j2, j1, j3]]
-        case2_deg = [[k_12, k_2], [j3, j1, j2]]
-        
-        # CASE 3; kA = k2, kB = -k1; S2 > S3 > S1 and S1 > S3 > S2
-        case3 = [[-k_2, k_1], [j2, j3, j1]] # SWITCHED negatives from -k_1
-        case3_deg = [[k_1, -k_2], [j1, j3, j2]] # SWITCHED negatives from -k_1
-        
-        case_arr = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
-        # need to consider degenerate cases. flipping each element in array, then appending to original case array
-        # case_arr = np.vstack((case_arr, [[np.flipud(el) for el in cse] for cse in case_arr]))
-        
-#        for each case and sub case, add to a matrix C(j1, j2, j3) which contains the contribution to the overall S3
-#        then sum over all indices. Need to keep track of js so that appropriate multiplications with cross corr matrix M3        
-        C = np.zeros((M,M,M))
+    S3_arr = np.zeros((3, 3, 3), dtype=float)
 
-        # S3_AAA = 0
-        for cse in case_arr:
-            kA, kB = cse[0]
-            ordered_js = cse[1]
-            
-            S3_AAA[i] += np.sum(sA*S_AAA31(kA, kB, b_A, N_A))
-            # S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1)
-            index = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
+    # helper for masked sums
+    def masked_sum(corr, I, mask):
+        m = (mask != 0)
+        if not np.any(m):
+            return 0.0
+        return np.sum(corr[m] * I[m])
 
-            I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-            corr = sAsAsA / sA[ordered_js[0]] # <s_j1 s_j3> POSSIBLE SOURCE OF NANS np.nans. if so must do #corr= np.einsum("i,j,k->ijk", vals, np.ones(len(vals)), vals)
-            S3_AAA[i] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+    # loop over cases and accumulate into S3_arr
+    for cse in case_arr:
+        kA, kB = cse[0]
+        ordered_js = cse[1]
 
-            # index = (ordered_js[0] != ordered_js[1]) * (ordered_js[0] != ordered_js[2]) * (ordered_js[1] != ordered_js[2])
-            index = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
-            I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2])
-            S3_AAA[i] += np.sum(sAsAsA[np.where(index != 0)]*I[np.where(index != 0)])
+        # masks
+        index1 = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
+        index2 = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
 
-            # xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
-            # xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
-            
-            # C = calc_case_s3(C, xm_A, xm_B, ordered_js)
+        # PPP  -> [0,0,0]
+        S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
 
+        # AAA -> [1,1,1]
+        S3_arr[1,1,1] += np.sum(sA * S_AAA31(kA, kB, b_A, N_A))
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr1 = sAsAsA / sA[ordered_js[0]]   # careful: ordered_js[0] indexes into sA
+        S3_arr[1,1,1] += masked_sum(corr1, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        corr2 = sAsAsA
+        S3_arr[1,1,1] += masked_sum(corr2, I, index2)
 
-def calc_case_s3(C, xm_A, xm_B, ordered_js):
+        # AAB -> [1,1,2]
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsB / sA[ordered_js[0]]
+        S3_arr[1,1,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,1,2] += masked_sum(sAsAsB, I, index2)
 
-    jmax, jmid, jmin = ordered_js
-    
-    cylindrical = False
-    epsilon = 0.0000001
-    if xm_A + epsilon > xm_B and xm_A - epsilon < xm_B:
-        cylindrical = True
-    
-    xm_A_eq_0 = False
-    if xm_A < 1e-5:
-        xm_A_eq_0 = True
-        
-    xm_B_eq_0 = False
-    if xm_B < 1e-5:
-        xm_B_eq_0 = True
+        # ABB -> [1,2,2]
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsB / sB[ordered_js[2]]
+        S3_arr[1,2,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,2,2] += masked_sum(sAsBsB, I, index2)
 
-    #for each sub case, looking at the degenerate case where 1 and 2 are switched
-    constant = np.exp(-xm_A*(jmax - jmid)) * np.exp(-xm_B*(jmid - jmin)) 
+        # AAP -> [1,1,0]
+        S3_arr[1,1,0] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+        I = S_AAP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsP / sA[ordered_js[0]]
+        S3_arr[1,1,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_A, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,1,0] += masked_sum(sAsAsP, I, index2)
 
-    # sub case 1; jmax > jmid > jmin, {s1, s2, s3} any 
-    index = (jmax > jmid) * (jmid > jmin)
-    
-    if cylindrical == True:
-        integral = (1 / xm_A**2) * 2 * (-1 + np.cosh(xm_A))
-    elif xm_B_eq_0:
-        integral = (2*(-1+np.cosh(xm_A)))/ (xm_A**2)
-    elif xm_A_eq_0:
-        integral = (2*(-1+np.cosh(xm_B)))/ (xm_B**2)
-    else:
-        integral = (-2 / (xm_A * (xm_A - xm_B) * xm_B)) \
-        * (-np.sinh(xm_A) + np.sinh(xm_A - xm_B) + np.sinh(xm_B))
+        # APA -> [1,0,1]
+        S3_arr[1,0,1] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsP
+        S3_arr[1,0,1] += masked_sum(corr, I, index1)
+        # handling As on different monomers
+        S3_arr[1,1,0] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,0,1] += masked_sum(sAsAsP, I, index2)
 
-    C[np.where((index) != 0)] += constant[np.where(index != 0)] \
-                                    * integral
-    
-    # sub case 2; jmax = jmid > jmin, s3 > s2, {s1} any
-    index = (jmax == jmid) * (jmid > jmin)
-    
-    if cylindrical == True:
-        integral = (1 / xm_A**3) *( (2 + xm_A) * (-1 + np.cosh(xm_A)) - (xm_A * np.sinh(xm_A)) )
-    elif xm_B_eq_0:
-        integral = (-1 + xm_A + np.cosh(xm_A) - np.sinh(xm_A))/ (xm_A**2)
-    elif xm_A_eq_0:
-        integral = (np.exp(-xm_B)*(-1 + np.exp(xm_B))*(1+np.exp(xm_B)*(-1 + xm_B))) / (xm_B**3)   
-    else:
-        integral = ((-1 + np.exp(xm_B))/(xm_A * (xm_A - xm_B)*xm_B**2)) \
-        * (xm_A + (-1 + np.exp(-xm_A))*xm_B - xm_A*np.cosh(xm_B) + xm_A*np.sinh(xm_B))
+        # BBB -> [2,2,2]
+        S3_arr[2,2,2] += np.sum(sB * S_AAA31(kA, kB, b_B, N_B))
+        I = S_AAA32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsB / sB[ordered_js[0]]
+        S3_arr[2,2,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,2,2] += masked_sum(sBsBsB, I, index2)
 
-    C[np.where((index) != 0)] += constant[np.where(index != 0)] \
-                                    * integral 
+        # BBP -> [2,2,0]
+        S3_arr[2,2,0] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+        I = S_AAP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsP / sB[ordered_js[0]]
+        S3_arr[2,2,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_B, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,2,0] += masked_sum(sBsBsP, I, index2)
 
-    # BONUS sub case 4; jmax > jmid = jmin, s2 > s1, {s3} any 
-    index = (jmax > jmid) * (jmid == jmin)
-    
-    if cylindrical == True:
-        integral = (1 / xm_A**3) *( (2 + xm_A) * (-1 + np.cosh(xm_A)) - (xm_A * np.sinh(xm_A)) )
-    elif xm_B_eq_0:
-        integral = ((-2+xm_A)*(-1+np.cosh(xm_A))+ (xm_A*np.sinh(xm_A)))/ (xm_A**3)
-    elif xm_A_eq_0:
-        integral = (-1+xm_B+np.cosh(xm_B) - np.sinh(xm_B))/ (xm_B**2)
-    else:
-        integral = (((-1 + np.exp(xm_A))*(np.exp(-xm_A - xm_B)))/(xm_B * (xm_A - xm_B)*xm_A**2)) \
-        * (-np.exp(xm_A)*xm_A + np.exp(xm_A + xm_B) * (xm_A -xm_B) + np.exp(xm_B)*xm_B)
+        # BPB -> [2,0,2]
+        S3_arr[2,0,2] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+        I = S_APA32(kA, kB, b_B, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsP
+        S3_arr[2,0,2] += masked_sum(corr, I, index1)
+        # also add to BBP
+        S3_arr[2,2,0] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,2] += masked_sum(sBsBsP, I, index2)
 
-    C[np.where((index) != 0)] += constant[np.where(index != 0)] \
-                                    * integral 
+        # ABP -> [1,2,0]
+        I = S_APA32(kA, kB, b_A, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsP
+        S3_arr[1,2,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_A, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,2,0] += masked_sum(sAsBsP, I, index2)
 
-    # sub case 3; jmax = jmid = jmin, s3 > s2 > s1
-    index = (jmax == jmid) * (jmid == jmin)
+        # BPA -> [2,0,1]
+        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsP
+        S3_arr[2,0,1] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,1] += masked_sum(sAsBsP, I, index2)
 
-    if cylindrical == True:
-        integral = (1 / xm_A**3) * (np.exp(-xm_A) * (2 + np.exp(xm_A)*(-2 + xm_A) + xm_A))
-    elif xm_B_eq_0:
-        integral = (2-2*np.exp(-xm_A) - 2*xm_A + xm_A**2)/ (2*xm_A**3)
-    elif xm_A_eq_0:
-        integral = (2-2*np.exp(-xm_B) - 2*xm_B + xm_B**2)/ (2*xm_B**3)
-    else:
-        integral = (1 / (xm_A**2 * xm_B - xm_A * xm_B**2))\
-        * ( xm_A + (((-1 + np.exp(-xm_B)) * xm_A)/(xm_B)) - xm_B + ((xm_B - np.exp(-xm_A)*xm_B)/(xm_A)) )
+        # APP -> [1,0,0] (only depends on single-k part; averaged over cases in original)
+        S3_arr[1,0,0] += np.sum(sA * S_APP31(kA, b_A, N_A)) / len(case_arr)
+        I = S_APP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index1)
+        I = S_APP33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index2)
 
-    C[np.where(index != 0)] += 1\
-                                    * constant[np.where(index != 0)]\
-                                    * integral
-    return C
+        # BPP -> [2,0,0]
+        S3_arr[2,0,0] += np.sum(sB * S_APP31(kA, b_B, N_B)) / len(case_arr)
+        I = S_APP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index1)
+        I = S_APP33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index2)
 
+    # PAA = AAP
+    S3_arr[0,1,1] = S3_arr[1,1,0]
 
-# def S_AAA32_OLD(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
-#     """GPT
-#     Compute
-#     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
-#                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
-#     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
-#     """
-#     jdiff = j3 - j1
-#     a = bA**2 / 6.0
-#     C = (1.0/6.0) * (N_P / (M - 1.0)) * (bP**2) * jdiff
+    # PBB = BBP
+    S3_arr[0,2,2] = S3_arr[2,2,0]
 
-#     k2sq = float(k2**2)
-#     k3sq = float(k3**2)
-#     Delta = k3sq - k2sq
+    # BAP = PAB = PBA = ABP
+    # BAP [2,1,0], PAB [0,1,2], PBA [0,2,1], ABP [1,2,0]
+    S3_arr[2,1,0] = S3_arr[0,1,2] = S3_arr[0,2,1] = S3_arr[1,2,0]
 
-#     # n3 integral factor
-#     if np.isclose(k3sq, 0.0):
-#         A3 = N_A
-#     else:
-#         A3 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq)
+    # APB = BPA
+    # APB [1,0,2], BPA [2,0,1]
+    S3_arr[1,0,2] = S3_arr[2,0,1]
 
-#     # double integral I12
-#     tol = 1e-12
-#     if np.isclose(Delta, 0.0, atol=tol):
-#         # k2^2 == k3^2 == kappa
-#         kappa = k3sq
-#         if np.isclose(kappa, 0.0):
-#             # both zero
-#             I12 = 0.5 * N_A**2  # ∫_0^N dn2 ∫_0^{n2} dn1 1 = N^2/2
-#         else:
-#             I12 = (1.0 / (a * kappa)) * ( (1.0 - np.exp(-a * kappa * N_A)) / (a * kappa)
-#                                          - (1.0 - np.exp(-2.0 * a * kappa * N_A)) / (2.0 * a * kappa) )
-#     else:
-#         # general case
-#         term1 = (1.0 - np.exp(-a * k2sq * N_A)) / (a * k2sq) if not np.isclose(k2sq, 0.0) else N_A
-#         term2 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq) if not np.isclose(k3sq, 0.0) else N_A
-#         I12 = (1.0 / (a * Delta)) * (term1 - term2)
+    # PPA = PAP = APP
+    # PPA [0,0,1], PAP [0,1,0], APP [1,0,0]
+    S3_arr[0,0,1] = S3_arr[0,1,0] = S3_arr[1,0,0]
 
-#     I = 2.0 * np.exp(-C * k3sq) * A3 * I12
-#     return I
+    # PPB = PBP = BPP
+    # PPB [0,0,2], PBP [0,2,0], BPP [2,0,0]
+    S3_arr[0,0,2] = S3_arr[0,2,0] = S3_arr[2,0,0]
 
-# def S_AAA32_OLD2(k2, k3, bA, bP, N_A, N_P, M, j3, j1, tol=1e-12):
-#     """
-#     Compute
-#     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
-#                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
-#     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
-#     Triple integral with all special cases handled in closed form.
-#     """
-#     jdiff = j3 - j1
-#     a = bA**2 / 6.0
-#     C = (1.0/6.0) * (N_P / (M - 1.0)) * (bP**2) * jdiff
+    # ABA = BAA = AAB
+    # ABA [1,2,1], BAA [2,1,1], AAB [1,1,2]
+    S3_arr[1,2,1] = S3_arr[2,1,1] = S3_arr[1,1,2]
 
-#     k2sq = float(k2**2)
-#     k3sq = float(k3**2)
+    # BAB = BBA = ABB
+    # BAB [2,1,2], BBA [2,2,1], ABB [1,2,2]
+    S3_arr[2,1,2] = S3_arr[2,2,1] = S3_arr[1,2,2]
 
-#     # Outer n3 factor
-#     if np.isclose(k3sq, 0.0, atol=tol):
-#         A3 = N_A
-#     else:
-#         A3 = (1.0 - np.exp(-a * k3sq * N_A)) / (a * k3sq)
-
-#     # Inner double integral
-#     if np.isclose(k2sq, 0.0, atol=tol) and np.isclose(k3sq, 0.0, atol=tol):
-#         # both zero
-#         I12 = 0.5 * N_A**2
-#     elif np.isclose(k2sq, 0.0, atol=tol):
-#         # k2=0, k3≠0
-#         I12 = N_A/(a*k3sq) - (1.0 - np.exp(-a*k3sq*N_A))/(a*k3sq)**2
-#     elif np.isclose(k3sq, 0.0, atol=tol):
-#         # k3=0, k2≠0
-#         I12 = N_A/(a*k2sq) - (1.0 - np.exp(-a*k2sq*N_A))/(a*k2sq)**2
-#     elif np.isclose(k2sq, k3sq, atol=tol):
-#         # equal nonzero
-#         kappa = k2sq
-#         I12 = (1.0/(a*kappa)) * (
-#             (1.0 - np.exp(-a*kappa*N_A))/(a*kappa)
-#           - (1.0 - np.exp(-2.0*a*kappa*N_A))/(2.0*a*kappa)
-#         )
-#     else:
-#         # general case
-#         I12 = (1.0/(a*(k3sq-k2sq))) * (
-#             (1.0 - np.exp(-a*k2sq*N_A))/(a*k2sq)
-#           - (1.0 - np.exp(-a*k3sq*N_A))/(a*k3sq)
-#         )
-
-#     return 2.0 * np.exp(-C * k3sq) * A3 * I12
+    return S3_arr
