@@ -41,8 +41,7 @@ from expl_bind_binding_calc import *
 #         M2_arr[a1][a2] = sisj_tens
 
 #     return M2_arr
-
-def calc_sf2(psol, corrs, k):
+def calc_sf2(psol, corrs, phius, k):
     v_P = psol.v_p
     N_P = psol.N_P
     b_P = psol.b_P
@@ -55,13 +54,7 @@ def calc_sf2(psol, corrs, k):
     M = psol.M
     solv_cons = psol.solv_cons
     phi_p = psol.phi_p
-    phi_A = psol.phi_A
-    phi_B = psol.phi_B
-
-    phi_Ab = psol.phi_Ab
-    phi_Au = psol.phi_Au
-    phi_Bb = psol.phi_Bb
-    phi_Bu = psol.phi_Bu
+    phi_Au, phi_Bu = phius
 
     sA, sB = corrs
     sAsA = np.outer(sA, sA)
@@ -154,32 +147,6 @@ def calc_sf2(psol, corrs, k):
     # P A_bound B_bound A_unbound B_unbound S
     # constants: np from z_P; Ns from sf definiton, V_sys form E density
     # assume v_P = v_A = v_B
-    # AP: n_p N_A N_P / V_sys = N_A phi_p
-    # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
-
-    # AuAu: N_A N_A / V_sys N_A , but V_sys goes to exp[log(\bar{z}_p/V_sys)] term?
-    # AuAu alt: n_A N_A N_A / V_sys = phi_A*N_A
-#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0, 0, 0], \
-#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P, S_AB*(phi_p*N_A*N_B)/N_P, 0, 0, 0],\
-#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P, 0, 0, 0],\
-#           [0, 0, 0, S_AuAu*N_A, 0, 0],\
-#           [0, 0, 0, 0, S_BuBu*N_B, 0],\
-#           [0, 0, 0, 0, 0, S_ss]]
-
-    # P A_tot B_tot S  OLD unbound weighting
-    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
-    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
-    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*N_B, 0],\
-    #       [0, 0, 0, S_ss]]
-    # return S2  
-
-#     # "intuitive" but largely correct AuAu, BuBu sfs- get a factor of phi from saddle point eqn
-#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
-#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*phi_A*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
-#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_B*N_B, 0],\
-#           [0, 0, 0, S_ss]]
-#     return S2
-
 
     # # folowing algebra AuAu, BuBu sfs- get a factor of phi from saddle point eqn
     # # also have N_A^2 for unbound sfs. NOT THAT GOOD
@@ -189,12 +156,185 @@ def calc_sf2(psol, corrs, k):
     #       [0, 0, 0, S_ss]]
     # return S2
 
-    # applying saddle point result to bound and unbound sfs- NOT ALGEBRAICALLY FOUNDED
+    # MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
+    # AP: n_p N_A N_P / V_sys = N_A phi_p
+    # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+    # AuAu: phi_Au * N_A^2 / V_sys = ? can also try N_A**1
+    S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+          [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+          [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
+          [0, 0, 0, S_ss]]
+    return S2
+
+    # applying saddle point result to bound and unbound sfs- not fully ALGEBRAICALLY FOUNDED! zp/zp
     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
           [S_AP*phi_p*N_A, S_AA*phi_Ab*N_A + S_AuAu*phi_Au*N_A, S_AB*phi_Ab*N_B, 0],\
           [S_BP*phi_p*N_B, S_AB*phi_Ab*N_B, S_BB*phi_Bb*N_B + S_BuBu*phi_Bu*N_B, 0],\
           [0, 0, 0, S_ss]]
     return S2
+
+# def calc_sf2(psol, corrs, k):
+#     v_P = psol.v_p
+#     N_P = psol.N_P
+#     b_P = psol.b_P
+#     v_A = psol.v_A
+#     N_A = psol.N_A
+#     b_A = psol.b_A
+#     v_B = psol.v_B
+#     N_B = psol.N_B
+#     b_B = psol.b_B
+#     M = psol.M
+#     solv_cons = psol.solv_cons
+#     phi_p = psol.phi_p
+#     phi_A = psol.phi_A
+#     phi_B = psol.phi_B
+
+#     phi_Ab = psol.phi_Ab
+#     phi_Au = psol.phi_Au
+#     phi_Bb = psol.phi_Bb
+#     phi_Bu = psol.phi_Bu
+
+#     sA, sB = corrs
+#     sAsA = np.outer(sA, sA)
+#     sBsB = np.outer(sB, sB)
+#     sAsB = np.outer(sA, sB)
+    
+#     x_p = (1/6)*N_P*b_P**2*k**2
+#     x_A = (1/6)*N_A*b_A**2*k**2
+#     x_B = (1/6)*N_B*b_B**2*k**2
+#     x_del = (1/6)*(N_P/(M-1))*b_P**2*k**2
+#     grid = np.indices((M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+
+    
+#     S_PP = ((2/x_p**2)*(x_p + np.exp(-x_p) - 1))[0]
+    
+#     S_AuAu = ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))[0]
+
+#     S_BuBu = ((2/x_B**2)*(x_B + np.exp(-x_B) - 1))[0]
+
+
+#     S_AA = 0
+#     C = np.zeros((M,M))
+#     # diagonal
+#     index = (j1 == j2)
+#     integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))[0]
+#     corr = sA
+#     C[np.where((index) != 0)] += corr * integral
+# #     print("removed diag")
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_A)**2 * (1- np.exp(-x_A))**2 * np.exp(-x_del*delta)
+#     corr = sAsA
+#     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+
+#     S_AA = np.sum(C)
+
+
+#     S_BB = 0
+#     C = np.zeros((M,M))
+#     # diagonal
+#     index = (j1 == j2)
+#     integral =  (2/x_B**2)*(x_B + np.exp(-x_B) - 1)
+#     corr = sB
+#     C[np.where((index) != 0)] += corr * integral
+# #     print("removed diag")
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_B)**2 * (1- np.exp(-x_B))**2 * np.exp(-x_del*delta)
+#     corr = sBsB
+#     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+#     S_BB = np.sum(C)
+
+
+#     S_AB = 0
+#     C = np.zeros((M,M))
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_B)*(1/x_A) * (1- np.exp(-x_B)) * (1- np.exp(-x_A)) * np.exp(-x_del*delta)
+#     corr = sAsB
+#     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+#     S_AB = np.sum(C)
+
+
+#     S_AP = 0
+#     C = np.zeros((M))
+#     j1_arr = np.arange(1, M+1)
+#     integral = (1/x_p)*(1/x_A) * (1- np.exp(-x_A)) * \
+#           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
+#     corr = sA
+#     C = corr * integral
+#     S_AP = np.sum(C)
+
+
+#     S_BP = 0
+#     C = np.zeros((M))
+#     j1_arr = np.arange(1, M+1)
+#     integral = (1/x_p)*(1/x_B) * (1- np.exp(-x_B)) * \
+#           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
+#     corr = sB
+#     C = corr * integral
+#     S_BP = np.sum(C)
+
+#     S_ss = solv_cons
+
+#     # P A_bound B_bound A_unbound B_unbound S
+#     # constants: np from z_P; Ns from sf definiton, V_sys form E density
+#     # assume v_P = v_A = v_B
+#     # AP: n_p N_A N_P / V_sys = N_A phi_p
+#     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+
+#     # AuAu: N_A N_A / V_sys N_A , but V_sys goes to exp[log(\bar{z}_p/V_sys)] term?
+#     # AuAu alt: n_A N_A N_A / V_sys = phi_A*N_A
+# #     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0, 0, 0], \
+# #           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P, S_AB*(phi_p*N_A*N_B)/N_P, 0, 0, 0],\
+# #           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P, 0, 0, 0],\
+# #           [0, 0, 0, S_AuAu*N_A, 0, 0],\
+# #           [0, 0, 0, 0, S_BuBu*N_B, 0],\
+# #           [0, 0, 0, 0, 0, S_ss]]
+
+#     # P A_tot B_tot S  OLD unbound weighting
+#     # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#     #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#     #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*N_B, 0],\
+#     #       [0, 0, 0, S_ss]]
+#     # return S2  
+
+# #     # "intuitive" but largely correct AuAu, BuBu sfs- get a factor of phi from saddle point eqn
+# #     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+# #           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*phi_A*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+# #           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_B*N_B, 0],\
+# #           [0, 0, 0, S_ss]]
+# #     return S2
+
+#     # # folowing algebra AuAu, BuBu sfs- get a factor of phi from saddle point eqn
+#     # # also have N_A^2 for unbound sfs. NOT THAT GOOD
+#     # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#     #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P + S_AuAu*phi_A*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#     #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_B*N_B**2, 0],\
+#     #       [0, 0, 0, S_ss]]
+#     # return S2
+
+#     # MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
+#     # AP: n_p N_A N_P / V_sys = N_A phi_p
+#     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+#     # AuAu: phi_Au * N_A^2 / V_sys = ? can also try N_A**1
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
+#           [0, 0, 0, S_ss]]
+#     return S2
+
+#     # applying saddle point result to bound and unbound sfs- not fully ALGEBRAICALLY FOUNDED! zp/zp
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#           [S_AP*phi_p*N_A, S_AA*phi_Ab*N_A + S_AuAu*phi_Au*N_A, S_AB*phi_Ab*N_B, 0],\
+#           [S_BP*phi_p*N_B, S_AB*phi_Ab*N_B, S_BB*phi_Bb*N_B + S_BuBu*phi_Bu*N_B, 0],\
+#           [0, 0, 0, S_ss]]
+#     return S2
 
 
 #     print("IGNORNING UNBOUND POLY")
@@ -554,17 +694,33 @@ def S_APP33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
     return F1 * np.exp(-B)  * np.exp(-C)#G
 
 
-def calc_sf3(
-    sA, sB, k1, k2, k12,
-    b_A=1.0, b_B=1.0, b_P=1.0,
-    N_A=100, N_B=100, N_P=1000, M=50
-):
+def calc_sf3(psol, corrs, k1, k2, k12):
     """
     Compute third-order structure factors for a single (k1,k2,k12).
     Returns S3_arr with axes [species1, species2, species3] where
       0 -> P, 1 -> A, 2 -> B
     """
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    solv_cons = psol.solv_cons
+    phi_p = psol.phi_p
+    phi_A = psol.phi_A
+    phi_B = psol.phi_B
 
+    phi_Ab = psol.phi_Ab
+    phi_Au = psol.phi_Au
+    phi_Bb = psol.phi_Bb
+    phi_Bu = psol.phi_Bu
+
+    sA, sB = corrs
     # correlations
     sP = np.ones_like(sA)
     sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)

@@ -1,19 +1,23 @@
 import numpy as np
 
 class Polymer_soln:
-    def __init__(self, n_bind, v_int, e_m, phi_p, phi_A, phi_B, poly_marks, mu1_arr, mu2_arr,\
-                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B):
+    def __init__(self, n_bind, v_int, e_m, phi_p, phi_s, poly_marks,\
+                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB):
         self.n_bind = n_bind
         self.v_int = v_int
         self.e_m = e_m
         self.phi_p = phi_p
-        self.phi_A = phi_A
-        self.phi_B = phi_B
-        self.phi_s = 1 - phi_p - phi_A - phi_B
+        # self.phi_Ab = phi_Ab
+        # self.phi_Au = phi_Au
+        # self.phi_Bb = phi_Bb
+        # self.phi_Bu = phi_Bu
+        # self.phi_A = phi_Ab + phi_Au
+        # self.phi_B = phi_Bb + phi_Bu
+        self.phi_s = phi_s
         self.solv_cons =  self.phi_s  # alpha = (phi_s * N) / phi_p, then apply incompressibilty
         self.poly_marks = poly_marks
-        self.mu1_arr = mu1_arr
-        self.mu2_arr = mu2_arr
+        # self.mu1_arr = mu1_arr
+        # self.mu2_arr = mu2_arr
         self.v_s = v_s
         self.N_P = N_P
         self.v_p = v_p # monomer volume
@@ -25,6 +29,7 @@ class Polymer_soln:
         self.v_B = v_B # monomer volume
         self.b_B = b_B
         self.M = len(poly_marks[0])
+        self.chi_AB = chi_AB
         # self.N_m = N / self.M
         # self.b = b
 

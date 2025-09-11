@@ -1,316 +1,426 @@
 from expl_bind_util import *
 
-# from hetero_bind_ave
-def eval_tmat(mu_a, mu_b, pa1 = 1, pa2 = 1, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
-    r"""
-    eval_tmat - Evaluate the transfer matrix or the nucleosome
-    T: considereing all the possible binding state combinations of the nucleosome to the left and the right
-        , all the contributions to the binding state partition function
-    Parameters
-    ----------
-    mu : float
-        HP1 chemical potential
-    nm1 : int
-        Number of methylated tails in the left-side nucleosome
-    nm2 : int
-        Number of methylated tails in the right-side nucleosome
-    nu : int
-        Indicator for nucleosomes within the interaction length
-    j_int : float
-        Strength of the HP1 interactions
+def binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B):
+    p_AmAb = p_markA * phi_Au*np.exp(e_A) #A marked A bound
+    p_BmAb = p_markB * phi_Au #B marked A bound
+    p_AmBb = p_markA * phi_Bu #A marked B bound
+    p_BmBb = p_markB * phi_Bu*np.exp(e_B) #B marked B bound
     
-    Returns
-    -------
-    tmat : 3x3 float array
-        Transfer matrix for the nucleosome    
+    q = 1 + p_AmAb + p_BmAb + p_AmBb + p_BmBb
+    s_Aj = (1*p_AmAb + 1*p_BmAb) / q
+    s_Bj = (1*p_AmBb + 1*p_BmBb) / q
+    return s_Aj, s_Bj
+
+def calc_fas(s_bnd_A, s_bnd_B):
+    # [sig_0, sig_A, sig_B, sig_AB] =  calc_sisjs(s_bnd_A, s_bnd_B) #[sig_0, sig_A, sig_B, sig_AB]
+    sig_A = s_bnd_A
+    sig_B = s_bnd_B
+    sig_0 = 1 - s_bnd_A - s_bnd_B
+
+    f_a = np.sum(sig_A) / (np.sum(np.ones(len(s_bnd_A))))
+    f_b = np.sum(sig_B) / (np.sum(np.ones(len(s_bnd_A))))
+    # f_ab = np.sum(sig_AB) / (np.sum(np.ones(len(s_bnd_A))))
+    f_o = np.sum(sig_0) / (np.sum(np.ones(len(s_bnd_A))))
+    return [f_a, f_b, f_o]
+
+def calc_mu_phi_bind(psol, phi_Au_arr, phi_Bu_arr):
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    phi_S = psol.solv_cons
+    phi_P = psol.phi_p
+    p_markA, p_markB = psol.poly_marks
+    chi_AB = psol.chi_AB
+    e_A, e_B = psol.e_m
+
+    num_pnts = len(phi_Au_arr)
+
+    phi_Au_mat = np.zeros((num_pnts,num_pnts))
+    phi_Bu_mat = np.zeros((num_pnts,num_pnts))
+    sA_mat = np.zeros((num_pnts,num_pnts, M))
+    sB_mat = np.zeros((num_pnts,num_pnts, M))
+    fA_mat = np.zeros((num_pnts,num_pnts))
+    fB_mat = np.zeros((num_pnts,num_pnts))
+    muA_mat = np.zeros((num_pnts,num_pnts))
+    muB_mat = np.zeros((num_pnts,num_pnts))
+    phi_Ab_mat = np.zeros((num_pnts,num_pnts))
+    phi_Bb_mat = np.zeros((num_pnts,num_pnts))
+
+    for i in range(len(phi_Au_arr)):
+        for j in range(len(phi_Bu_arr)):
+            phi_Au = phi_Au_arr[i]
+            phi_Bu = phi_Bu_arr[j]
+            phi_Au_mat[i,j] = phi_Au
+            phi_Bu_mat[i,j] = phi_Bu   
+            
+            s_Aj, s_Bj = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B)   
+            sA_mat[i,j] = s_Aj
+            sB_mat[i,j] = s_Bj
+            fA, fB, f0 = calc_fas(s_Aj, s_Bj)
+            fA_mat[i,j] = fA
+            fB_mat[i,j] = fB
+
+            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_P * np.sum(s_Aj)
+            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_P * np.sum(s_Bj)
+            phi_Ab_mat[i,j] = phi_Ab
+            phi_Bb_mat[i,j] = phi_Bb 
+
+            # print("$\phi_A^{(B)}, \phi_B^{(B)} $:", phi_Ab, phi_Bb)
+            mu_A = np.log(phi_Au) + v_A*N_A*chi_AB*(phi_Bb+phi_Bu)
+            mu_B = np.log(phi_Bu) + v_B*N_B*chi_AB*(phi_Ab+phi_Au)
+            muA_mat[i,j] = mu_A
+            muB_mat[i,j] = mu_B
+
+            if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 1):
+                raise  ValueError("sum of phis > 1; decrease unbound fractions ")
     
-    """
+    return muA_mat, muB_mat, sA_mat, sB_mat, fA_mat, fB_mat, phi_Au_mat, phi_Bu_mat, phi_Ab_mat, phi_Bb_mat, 
+
+
     
-    v1 = np.array([1, np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa1) * np.exp(mu_b / 2), np.sqrt(1 - pa1) * np.exp(mu_a / 2), np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
-    v2 = np.array([1, np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa2) * np.exp(mu_b / 2), np.sqrt(1 - pa2) * np.exp(mu_a / 2), np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
-    tmat = np.outer(v1, v2) * np.exp(f_ref)
-    # T: tmat is all possible combinations of (un-normalized) probability of adjacent nucleosomes binding state (boltzmann weightings)
-    #   essentially joint probability matrix
+
+
+# def calc_binding_states(psol):
+#     # evaluate average binding state for each nucleosome at each mu1,mu2
     
-    # Add the interaction terms
-    # T: all the matrix elements with a 0 have at max one protein bound, therefore no interaction
-    # T: QUESTION: tmat[1,1]] means left nucleosome and right nucleosome have A bound. why assume interaction between them then?
-    # ANSWER: tmat is bbetween two nucleosomes total: left-side and right-side. propogating from left-side to right-side
-    tmat[1, 1] *= np.exp(-j_aa)
-    tmat[1, 2] *= np.exp(-j_ab)
-    tmat[1, 3] *= np.exp(-j_aa)
-    tmat[1, 4] *= np.exp(-j_ab)
-    tmat[2, 1] *= np.exp(-j_ab)
-    tmat[2, 2] *= np.exp(-j_bb)
-    tmat[2, 3] *= np.exp(-j_ab)
-    tmat[2, 4] *= np.exp(-j_bb)
-    tmat[3, 1] *= np.exp(-j_aa)
-    tmat[3, 2] *= np.exp(-j_ab)
-    tmat[3, 3] *= np.exp(-j_aa)
-    tmat[3, 4] *= np.exp(-j_ab)
-    tmat[4, 1] *= np.exp(-j_ab)
-    tmat[4, 2] *= np.exp(-j_bb)
-    tmat[4, 3] *= np.exp(-j_ab)
-    tmat[4, 4] *= np.exp(-j_bb)
+#     # [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+
+#     [pa_vec, marks_2] = psol.poly_marks
+
+#     # mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+#     # mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+
+#     s_bind_1_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
+#     s_bind_2_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
+    
+#     f_ref = np.min(np.array([psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], psol.e_m[0] / 2,  psol.e_m[1] / 2]))
+
+#     for i, mu1 in enumerate(psol.mu1_arr):
+#         for j, mu2 in enumerate(psol.mu2_arr):
+#             s_bind_ave_a, s_bind_ave_b = eval_phi(pa_vec, mu1, mu2, psol.e_m[0], psol.e_m[1], psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], f_ref)
+#             s_bind_1_soln_arr[i,j,:] = s_bind_ave_a
+#             s_bind_2_soln_arr[i,j,:] = s_bind_ave_b
+    
+#     return s_bind_1_soln_arr, s_bind_2_soln_arr
+
+# # from hetero_bind_ave
+# def eval_tmat(mu_a, mu_b, pa1 = 1, pa2 = 1, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
+#     r"""
+#     eval_tmat - Evaluate the transfer matrix or the nucleosome
+#     T: considereing all the possible binding state combinations of the nucleosome to the left and the right
+#         , all the contributions to the binding state partition function
+#     Parameters
+#     ----------
+#     mu : float
+#         HP1 chemical potential
+#     nm1 : int
+#         Number of methylated tails in the left-side nucleosome
+#     nm2 : int
+#         Number of methylated tails in the right-side nucleosome
+#     nu : int
+#         Indicator for nucleosomes within the interaction length
+#     j_int : float
+#         Strength of the HP1 interactions
+    
+#     Returns
+#     -------
+#     tmat : 3x3 float array
+#         Transfer matrix for the nucleosome    
+    
+#     """
+    
+#     v1 = np.array([1, np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa1) * np.exp(mu_b / 2), np.sqrt(1 - pa1) * np.exp(mu_a / 2), np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
+#     v2 = np.array([1, np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa2) * np.exp(mu_b / 2), np.sqrt(1 - pa2) * np.exp(mu_a / 2), np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
+#     tmat = np.outer(v1, v2) * np.exp(f_ref)
+#     # T: tmat is all possible combinations of (un-normalized) probability of adjacent nucleosomes binding state (boltzmann weightings)
+#     #   essentially joint probability matrix
+    
+#     # Add the interaction terms
+#     # T: all the matrix elements with a 0 have at max one protein bound, therefore no interaction
+#     # T: QUESTION: tmat[1,1]] means left nucleosome and right nucleosome have A bound. why assume interaction between them then?
+#     # ANSWER: tmat is bbetween two nucleosomes total: left-side and right-side. propogating from left-side to right-side
+#     tmat[1, 1] *= np.exp(-j_aa)
+#     tmat[1, 2] *= np.exp(-j_ab)
+#     tmat[1, 3] *= np.exp(-j_aa)
+#     tmat[1, 4] *= np.exp(-j_ab)
+#     tmat[2, 1] *= np.exp(-j_ab)
+#     tmat[2, 2] *= np.exp(-j_bb)
+#     tmat[2, 3] *= np.exp(-j_ab)
+#     tmat[2, 4] *= np.exp(-j_bb)
+#     tmat[3, 1] *= np.exp(-j_aa)
+#     tmat[3, 2] *= np.exp(-j_ab)
+#     tmat[3, 3] *= np.exp(-j_aa)
+#     tmat[3, 4] *= np.exp(-j_ab)
+#     tmat[4, 1] *= np.exp(-j_ab)
+#     tmat[4, 2] *= np.exp(-j_bb)
+#     tmat[4, 3] *= np.exp(-j_ab)
+#     tmat[4, 4] *= np.exp(-j_bb)
                     
-    return tmat
+#     return tmat
 
-def eval_tend(mu_a, mu_b, pa = 1, ea = 0, eb = 0, f_ref = 0):
-    r"""
-    eval_tmat - Evaluate the transfer matrix or the nucleosome
-    T: only have one interaction if nucleosome is first or last genomic position
-    Parameters
-    ----------
-    mu : float
-        HP1 chemical potential
-    nm1 : int
-        Number of methylated tails in the left-side nucleosome
-    nm2 : int
-        Number of methylated tails in the right-side nucleosome
-    nu : int
-        Indicator for nucleosomes within the interaction length
-    j_int : float
-        Strength of the HP1 interactions
+# def eval_tend(mu_a, mu_b, pa = 1, ea = 0, eb = 0, f_ref = 0):
+#     r"""
+#     eval_tmat - Evaluate the transfer matrix or the nucleosome
+#     T: only have one interaction if nucleosome is first or last genomic position
+#     Parameters
+#     ----------
+#     mu : float
+#         HP1 chemical potential
+#     nm1 : int
+#         Number of methylated tails in the left-side nucleosome
+#     nm2 : int
+#         Number of methylated tails in the right-side nucleosome
+#     nu : int
+#         Indicator for nucleosomes within the interaction length
+#     j_int : float
+#         Strength of the HP1 interactions
     
-    Returns
-    -------
-    tmat : 3x3 float array
-        Transfer matrix for the nucleosome    
+#     Returns
+#     -------
+#     tmat : 3x3 float array
+#         Transfer matrix for the nucleosome    
     
-    """
+#     """
 
-    v1 = np.array([1, np.sqrt(pa) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa) * np.exp(mu_b / 2), np.sqrt(1 - pa) * np.exp(mu_a / 2), np.sqrt(1 - pa) * np.exp(mu_b / 2 - eb / 2)])    
+#     v1 = np.array([1, np.sqrt(pa) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa) * np.exp(mu_b / 2), np.sqrt(1 - pa) * np.exp(mu_a / 2), np.sqrt(1 - pa) * np.exp(mu_b / 2 - eb / 2)])    
     
-    tend = v1 * np.exp(f_ref)
+#     tend = v1 * np.exp(f_ref)
                     
-    return tend
+#     return tend
 
-def eval_dtdmu(mu_a, mu_b, pa1 = 1, pa2 = 1, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
-    r"""
-    eval_tmat - Evaluate the transfer matrix or the nucleosome
+# def eval_dtdmu(mu_a, mu_b, pa1 = 1, pa2 = 1, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
+#     r"""
+#     eval_tmat - Evaluate the transfer matrix or the nucleosome
     
-    Parameters
-    ----------
-    mu : float
-        HP1 chemical potential
-    nm1 : int
-        Number of methylated tails in the left-side nucleosome
-    nm2 : int
-        Number of methylated tails in the right-side nucleosome
-    nu : int
-        Indicator for nucleosomes within the interaction length
-    j_int : float
-        Strength of the HP1 interactions
+#     Parameters
+#     ----------
+#     mu : float
+#         HP1 chemical potential
+#     nm1 : int
+#         Number of methylated tails in the left-side nucleosome
+#     nm2 : int
+#         Number of methylated tails in the right-side nucleosome
+#     nu : int
+#         Indicator for nucleosomes within the interaction length
+#     j_int : float
+#         Strength of the HP1 interactions
     
-    Returns
-    -------
-    tmat : 3x3 float array
-        Transfer matrix for the nucleosome    
+#     Returns
+#     -------
+#     tmat : 3x3 float array
+#         Transfer matrix for the nucleosome    
     
-    """
+#     """
 
     
-    v1 = np.array([1, np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa1) * np.exp(mu_b / 2), np.sqrt(1 - pa1) * np.exp(mu_a / 2), np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
-    # change in transfer matrix as change mu_a, mu_b wrt left nucleosome
-    dv1da = np.array([0, 0.5 * np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa1) * np.exp(mu_a / 2), 0])
-    dv1db = np.array([0, 0, 0.5 * np.sqrt(pa1) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
+#     v1 = np.array([1, np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa1) * np.exp(mu_b / 2), np.sqrt(1 - pa1) * np.exp(mu_a / 2), np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
+#     # change in transfer matrix as change mu_a, mu_b wrt left nucleosome
+#     dv1da = np.array([0, 0.5 * np.sqrt(pa1) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa1) * np.exp(mu_a / 2), 0])
+#     dv1db = np.array([0, 0, 0.5 * np.sqrt(pa1) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa1) * np.exp(mu_b / 2 - eb / 2)])
     
-    v2 = np.array([1, np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa2) * np.exp(mu_b / 2), np.sqrt(1 - pa2) * np.exp(mu_a / 2), np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
-    dv2da = np.array([0, 0.5 * np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa2) * np.exp(mu_a / 2), 0])
-    dv2db = np.array([0, 0, 0.5 * np.sqrt(pa2) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
+#     v2 = np.array([1, np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), np.sqrt(pa2) * np.exp(mu_b / 2), np.sqrt(1 - pa2) * np.exp(mu_a / 2), np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
+#     dv2da = np.array([0, 0.5 * np.sqrt(pa2) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa2) * np.exp(mu_a / 2), 0])
+#     dv2db = np.array([0, 0, 0.5 * np.sqrt(pa2) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa2) * np.exp(mu_b / 2 - eb / 2)])
     
-    dtda1 = np.outer(dv1da, v2) * np.exp(f_ref)
-    dtdb1 = np.outer(dv1db, v2) * np.exp(f_ref)
-    dtda2 = np.outer(v1, dv2da) * np.exp(f_ref)
-    dtdb2 = np.outer(v1, dv2db) * np.exp(f_ref)
+#     dtda1 = np.outer(dv1da, v2) * np.exp(f_ref)
+#     dtdb1 = np.outer(dv1db, v2) * np.exp(f_ref)
+#     dtda2 = np.outer(v1, dv2da) * np.exp(f_ref)
+#     dtdb2 = np.outer(v1, dv2db) * np.exp(f_ref)
     
-    # Add the interaction terms
+#     # Add the interaction terms
     
-    dtda1[1, 1] *= np.exp(-j_aa)
-    dtda1[1, 2] *= np.exp(-j_ab)
-    dtda1[1, 3] *= np.exp(-j_aa)
-    dtda1[1, 4] *= np.exp(-j_ab)
-    dtda1[2, 1] *= np.exp(-j_ab)
-    dtda1[2, 2] *= np.exp(-j_bb)
-    dtda1[2, 3] *= np.exp(-j_ab)
-    dtda1[2, 4] *= np.exp(-j_bb)
-    dtda1[3, 1] *= np.exp(-j_aa)
-    dtda1[3, 2] *= np.exp(-j_ab)
-    dtda1[3, 3] *= np.exp(-j_aa)
-    dtda1[3, 4] *= np.exp(-j_ab)
-    dtda1[4, 1] *= np.exp(-j_ab)
-    dtda1[4, 2] *= np.exp(-j_bb)
-    dtda1[4, 3] *= np.exp(-j_ab)
-    dtda1[4, 4] *= np.exp(-j_bb)
+#     dtda1[1, 1] *= np.exp(-j_aa)
+#     dtda1[1, 2] *= np.exp(-j_ab)
+#     dtda1[1, 3] *= np.exp(-j_aa)
+#     dtda1[1, 4] *= np.exp(-j_ab)
+#     dtda1[2, 1] *= np.exp(-j_ab)
+#     dtda1[2, 2] *= np.exp(-j_bb)
+#     dtda1[2, 3] *= np.exp(-j_ab)
+#     dtda1[2, 4] *= np.exp(-j_bb)
+#     dtda1[3, 1] *= np.exp(-j_aa)
+#     dtda1[3, 2] *= np.exp(-j_ab)
+#     dtda1[3, 3] *= np.exp(-j_aa)
+#     dtda1[3, 4] *= np.exp(-j_ab)
+#     dtda1[4, 1] *= np.exp(-j_ab)
+#     dtda1[4, 2] *= np.exp(-j_bb)
+#     dtda1[4, 3] *= np.exp(-j_ab)
+#     dtda1[4, 4] *= np.exp(-j_bb)
     
-    dtdb1[1, 1] *= np.exp(-j_aa)
-    dtdb1[1, 2] *= np.exp(-j_ab)
-    dtdb1[1, 3] *= np.exp(-j_aa)
-    dtdb1[1, 4] *= np.exp(-j_ab)
-    dtdb1[2, 1] *= np.exp(-j_ab)
-    dtdb1[2, 2] *= np.exp(-j_bb)
-    dtdb1[2, 3] *= np.exp(-j_ab)
-    dtdb1[2, 4] *= np.exp(-j_bb)
-    dtdb1[3, 1] *= np.exp(-j_aa)
-    dtdb1[3, 2] *= np.exp(-j_ab)
-    dtdb1[3, 3] *= np.exp(-j_aa)
-    dtdb1[3, 4] *= np.exp(-j_ab)
-    dtdb1[4, 1] *= np.exp(-j_ab)
-    dtdb1[4, 2] *= np.exp(-j_bb)
-    dtdb1[4, 3] *= np.exp(-j_ab)
-    dtdb1[4, 4] *= np.exp(-j_bb)
+#     dtdb1[1, 1] *= np.exp(-j_aa)
+#     dtdb1[1, 2] *= np.exp(-j_ab)
+#     dtdb1[1, 3] *= np.exp(-j_aa)
+#     dtdb1[1, 4] *= np.exp(-j_ab)
+#     dtdb1[2, 1] *= np.exp(-j_ab)
+#     dtdb1[2, 2] *= np.exp(-j_bb)
+#     dtdb1[2, 3] *= np.exp(-j_ab)
+#     dtdb1[2, 4] *= np.exp(-j_bb)
+#     dtdb1[3, 1] *= np.exp(-j_aa)
+#     dtdb1[3, 2] *= np.exp(-j_ab)
+#     dtdb1[3, 3] *= np.exp(-j_aa)
+#     dtdb1[3, 4] *= np.exp(-j_ab)
+#     dtdb1[4, 1] *= np.exp(-j_ab)
+#     dtdb1[4, 2] *= np.exp(-j_bb)
+#     dtdb1[4, 3] *= np.exp(-j_ab)
+#     dtdb1[4, 4] *= np.exp(-j_bb)
                     
-    dtda2[1, 1] *= np.exp(-j_aa)
-    dtda2[1, 2] *= np.exp(-j_ab)
-    dtda2[1, 3] *= np.exp(-j_aa)
-    dtda2[1, 4] *= np.exp(-j_ab)
-    dtda2[2, 1] *= np.exp(-j_ab)
-    dtda2[2, 2] *= np.exp(-j_bb)
-    dtda2[2, 3] *= np.exp(-j_ab)
-    dtda2[2, 4] *= np.exp(-j_bb)
-    dtda2[3, 1] *= np.exp(-j_aa)
-    dtda2[3, 2] *= np.exp(-j_ab)
-    dtda2[3, 3] *= np.exp(-j_aa)
-    dtda2[3, 4] *= np.exp(-j_ab)
-    dtda2[4, 1] *= np.exp(-j_ab)
-    dtda2[4, 2] *= np.exp(-j_bb)
-    dtda2[4, 3] *= np.exp(-j_ab)
-    dtda2[4, 4] *= np.exp(-j_bb)
+#     dtda2[1, 1] *= np.exp(-j_aa)
+#     dtda2[1, 2] *= np.exp(-j_ab)
+#     dtda2[1, 3] *= np.exp(-j_aa)
+#     dtda2[1, 4] *= np.exp(-j_ab)
+#     dtda2[2, 1] *= np.exp(-j_ab)
+#     dtda2[2, 2] *= np.exp(-j_bb)
+#     dtda2[2, 3] *= np.exp(-j_ab)
+#     dtda2[2, 4] *= np.exp(-j_bb)
+#     dtda2[3, 1] *= np.exp(-j_aa)
+#     dtda2[3, 2] *= np.exp(-j_ab)
+#     dtda2[3, 3] *= np.exp(-j_aa)
+#     dtda2[3, 4] *= np.exp(-j_ab)
+#     dtda2[4, 1] *= np.exp(-j_ab)
+#     dtda2[4, 2] *= np.exp(-j_bb)
+#     dtda2[4, 3] *= np.exp(-j_ab)
+#     dtda2[4, 4] *= np.exp(-j_bb)
     
-    dtdb2[1, 1] *= np.exp(-j_aa)
-    dtdb2[1, 2] *= np.exp(-j_ab)
-    dtdb2[1, 3] *= np.exp(-j_aa)
-    dtdb2[1, 4] *= np.exp(-j_ab)
-    dtdb2[2, 1] *= np.exp(-j_ab)
-    dtdb2[2, 2] *= np.exp(-j_bb)
-    dtdb2[2, 3] *= np.exp(-j_ab)
-    dtdb2[2, 4] *= np.exp(-j_bb)
-    dtdb2[3, 1] *= np.exp(-j_aa)
-    dtdb2[3, 2] *= np.exp(-j_ab)
-    dtdb2[3, 3] *= np.exp(-j_aa)
-    dtdb2[3, 4] *= np.exp(-j_ab)
-    dtdb2[4, 1] *= np.exp(-j_ab)
-    dtdb2[4, 2] *= np.exp(-j_bb)
-    dtdb2[4, 3] *= np.exp(-j_ab)
-    dtdb2[4, 4] *= np.exp(-j_bb)
+#     dtdb2[1, 1] *= np.exp(-j_aa)
+#     dtdb2[1, 2] *= np.exp(-j_ab)
+#     dtdb2[1, 3] *= np.exp(-j_aa)
+#     dtdb2[1, 4] *= np.exp(-j_ab)
+#     dtdb2[2, 1] *= np.exp(-j_ab)
+#     dtdb2[2, 2] *= np.exp(-j_bb)
+#     dtdb2[2, 3] *= np.exp(-j_ab)
+#     dtdb2[2, 4] *= np.exp(-j_bb)
+#     dtdb2[3, 1] *= np.exp(-j_aa)
+#     dtdb2[3, 2] *= np.exp(-j_ab)
+#     dtdb2[3, 3] *= np.exp(-j_aa)
+#     dtdb2[3, 4] *= np.exp(-j_ab)
+#     dtdb2[4, 1] *= np.exp(-j_ab)
+#     dtdb2[4, 2] *= np.exp(-j_bb)
+#     dtdb2[4, 3] *= np.exp(-j_ab)
+#     dtdb2[4, 4] *= np.exp(-j_bb)
         
-    return dtda1, dtda2, dtdb1, dtdb2
+#     return dtda1, dtda2, dtdb1, dtdb2
     
-def eval_dtenddmu(mu_a, mu_b, pa = 1, ea = 0, eb = 0, f_ref = 0):
-    r"""
-    eval_tmat - Evaluate the transfer matrix or the nucleosome
+# def eval_dtenddmu(mu_a, mu_b, pa = 1, ea = 0, eb = 0, f_ref = 0):
+#     r"""
+#     eval_tmat - Evaluate the transfer matrix or the nucleosome
     
-    Parameters
-    ----------
-    mu : float
-        HP1 chemical potential
-    nm1 : int
-        Number of methylated tails in the left-side nucleosome
-    nm2 : int
-        Number of methylated tails in the right-side nucleosome
-    nu : int
-        Indicator for nucleosomes within the interaction length
-    j_int : float
-        Strength of the HP1 interactions
+#     Parameters
+#     ----------
+#     mu : float
+#         HP1 chemical potential
+#     nm1 : int
+#         Number of methylated tails in the left-side nucleosome
+#     nm2 : int
+#         Number of methylated tails in the right-side nucleosome
+#     nu : int
+#         Indicator for nucleosomes within the interaction length
+#     j_int : float
+#         Strength of the HP1 interactions
     
-    Returns
-    -------
-    tmat : 3x3 float array
-        Transfer matrix for the nucleosome    
+#     Returns
+#     -------
+#     tmat : 3x3 float array
+#         Transfer matrix for the nucleosome    
     
-    """
+#     """
 
     
-    dv1da = np.array([0, 0.5 * np.sqrt(pa) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa) * np.exp(mu_a / 2), 0])
-    dv1db = np.array([0, 0, 0.5 * np.sqrt(pa) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa) * np.exp(mu_b / 2 - eb / 2)])
+#     dv1da = np.array([0, 0.5 * np.sqrt(pa) * np.exp(mu_a / 2 - ea / 2), 0, 0.5 * np.sqrt(1 - pa) * np.exp(mu_a / 2), 0])
+#     dv1db = np.array([0, 0, 0.5 * np.sqrt(pa) * np.exp(mu_b / 2), 0, 0.5 * np.sqrt(1 - pa) * np.exp(mu_b / 2 - eb / 2)])
     
-    dtendda = dv1da * np.exp(f_ref)
-    dtenddb = dv1db * np.exp(f_ref)
+#     dtendda = dv1da * np.exp(f_ref)
+#     dtenddb = dv1db * np.exp(f_ref)
                     
-    return dtendda, dtenddb
+#     return dtendda, dtenddb
     
-def eval_phi(pa_vec, mu_a = 0, mu_b = 0, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
+# def eval_phi(pa_vec, mu_a = 0, mu_b = 0, ea = 0, eb = 0, j_aa = 0, j_bb = 0, j_ab = 0, f_ref = 0):
     
-    nm = len(pa_vec)
-    phiva = np.zeros((nm, 5))
-    phivb = np.zeros((nm, 5))
-    phia = np.zeros((nm))
-    phib = np.zeros((nm))
+#     nm = len(pa_vec)
+#     phiva = np.zeros((nm, 5))
+#     phivb = np.zeros((nm, 5))
+#     phia = np.zeros((nm))
+#     phib = np.zeros((nm))
     
-    # Evaluate binding for the first bead
+#     # Evaluate binding for the first bead
     
-    pa2 = pa_vec[0]
-    tend = eval_tend(mu_a, mu_b, pa2, ea, eb, f_ref)
-    dtendda, dtenddb = eval_dtenddmu(mu_a, mu_b, pa2, ea, eb, f_ref)
+#     pa2 = pa_vec[0]
+#     tend = eval_tend(mu_a, mu_b, pa2, ea, eb, f_ref)
+#     dtendda, dtenddb = eval_dtenddmu(mu_a, mu_b, pa2, ea, eb, f_ref)
 
-    q_vec = tend
-    phiva[0, :] = dtendda
-    phivb[0, :] = dtenddb
-    for j in range(1, nm):
-        phiva[j, :] = tend
-        phivb[j, :] = tend
+#     q_vec = tend
+#     phiva[0, :] = dtendda
+#     phivb[0, :] = dtenddb
+#     for j in range(1, nm):
+#         phiva[j, :] = tend
+#         phivb[j, :] = tend
     
-    # Evaluate binding for the intermediate beads
+#     # Evaluate binding for the intermediate beads
     
-    for i in range(0, nm - 1):
+#     for i in range(0, nm - 1):
 
-        # update mark probabilty of left and right nucleosome
-        pa1 = pa2
-        pa2 = pa_vec[i + 1]
+#         # update mark probabilty of left and right nucleosome
+#         pa1 = pa2
+#         pa2 = pa_vec[i + 1]
         
-        tmat = eval_tmat(mu_a, mu_b, pa1, pa2, ea, eb, j_aa, j_bb, j_ab, f_ref)
-        dtda1, dtda2, dtdb1, dtdb2 = eval_dtdmu(mu_a, mu_b, pa1, pa2, ea, eb, j_aa, j_bb, j_ab, f_ref)
+#         tmat = eval_tmat(mu_a, mu_b, pa1, pa2, ea, eb, j_aa, j_bb, j_ab, f_ref)
+#         dtda1, dtda2, dtdb1, dtdb2 = eval_dtdmu(mu_a, mu_b, pa1, pa2, ea, eb, j_aa, j_bb, j_ab, f_ref)
         
-        q_vec = np.matmul(q_vec, tmat)
+#         q_vec = np.matmul(q_vec, tmat)
 
-        for j in range(0, nm):
-            if j == i:
-                phiva[j, :] = np.matmul(phiva[j, :], tmat) + np.matmul(phiva[i + 1, :], dtda1)
-                phivb[j, :] = np.matmul(phivb[j, :], tmat) + np.matmul(phivb[i + 1, :], dtdb1)
-            elif j == (i + 1):
-                # only condiser neighbor in one direction- whole point of transfer matrix method
-                phiva[j, :] = np.matmul(phiva[j, :], dtda2)
-                phivb[j, :] = np.matmul(phivb[j, :], dtdb2)
-            else:
-                phiva[j, :] = np.matmul(phiva[j, :], tmat)
-                phivb[j, :] = np.matmul(phivb[j, :], tmat)
+#         for j in range(0, nm):
+#             if j == i:
+#                 phiva[j, :] = np.matmul(phiva[j, :], tmat) + np.matmul(phiva[i + 1, :], dtda1)
+#                 phivb[j, :] = np.matmul(phivb[j, :], tmat) + np.matmul(phivb[i + 1, :], dtdb1)
+#             elif j == (i + 1):
+#                 # only condiser neighbor in one direction- whole point of transfer matrix method
+#                 phiva[j, :] = np.matmul(phiva[j, :], dtda2)
+#                 phivb[j, :] = np.matmul(phivb[j, :], dtdb2)
+#             else:
+#                 phiva[j, :] = np.matmul(phiva[j, :], tmat)
+#                 phivb[j, :] = np.matmul(phivb[j, :], tmat)
     
-    # Evaluate binding for the last bead
+#     # Evaluate binding for the last bead
 
-    pa1 = pa2
-    tend = eval_tend(mu_a, mu_b, pa1, ea, eb, f_ref)
-    dtendda, dtenddb = eval_dtenddmu(mu_a, mu_b, pa1, ea, eb, f_ref)
+#     pa1 = pa2
+#     tend = eval_tend(mu_a, mu_b, pa1, ea, eb, f_ref)
+#     dtendda, dtenddb = eval_dtenddmu(mu_a, mu_b, pa1, ea, eb, f_ref)
 
-    # calculate average binding fractions
-    q = np.matmul(q_vec, tend) #part func
-    phia[nm - 1] = (np.matmul(q_vec, dtendda) + np.matmul(phiva[nm - 1, :], tend)) / q
-    phib[nm - 1] = (np.matmul(q_vec, dtenddb) + np.matmul(phivb[nm - 1, :], tend)) / q
-    for j in range(0, nm - 1):
-        phia[j] = np.matmul(phiva[j, :], tend) / q
-        phib[j] = np.matmul(phivb[j, :], tend) / q
+#     # calculate average binding fractions
+#     q = np.matmul(q_vec, tend) #part func
+#     phia[nm - 1] = (np.matmul(q_vec, dtendda) + np.matmul(phiva[nm - 1, :], tend)) / q
+#     phib[nm - 1] = (np.matmul(q_vec, dtenddb) + np.matmul(phivb[nm - 1, :], tend)) / q
+#     for j in range(0, nm - 1):
+#         phia[j] = np.matmul(phiva[j, :], tend) / q
+#         phib[j] = np.matmul(phivb[j, :], tend) / q
     
-    return phia, phib
+#     return phia, phib
     
 
-def calc_binding_states(psol):
-    # evaluate average binding state for each nucleosome at each mu1,mu2
+# def calc_binding_states(psol):
+#     # evaluate average binding state for each nucleosome at each mu1,mu2
     
-    # [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
+#     # [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, f_om, N, N_m, b] = chrom
 
-    [pa_vec, marks_2] = psol.poly_marks
+#     [pa_vec, marks_2] = psol.poly_marks
 
-    # mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
-    # mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+#     # mu1_array = np.arange(mu_min, mu_max, del_mu)#[-5]
+#     # mu2_array = np.arange(mu_min, mu_max, del_mu)#[-5]
 
-    s_bind_1_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
-    s_bind_2_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
+#     s_bind_1_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
+#     s_bind_2_soln_arr = np.zeros((len(psol.mu1_arr), len(psol.mu2_arr), psol.M))
     
-    f_ref = np.min(np.array([psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], psol.e_m[0] / 2,  psol.e_m[1] / 2]))
+#     f_ref = np.min(np.array([psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], psol.e_m[0] / 2,  psol.e_m[1] / 2]))
 
-    for i, mu1 in enumerate(psol.mu1_arr):
-        for j, mu2 in enumerate(psol.mu2_arr):
-            s_bind_ave_a, s_bind_ave_b = eval_phi(pa_vec, mu1, mu2, psol.e_m[0], psol.e_m[1], psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], f_ref)
-            s_bind_1_soln_arr[i,j,:] = s_bind_ave_a
-            s_bind_2_soln_arr[i,j,:] = s_bind_ave_b
+#     for i, mu1 in enumerate(psol.mu1_arr):
+#         for j, mu2 in enumerate(psol.mu2_arr):
+#             s_bind_ave_a, s_bind_ave_b = eval_phi(pa_vec, mu1, mu2, psol.e_m[0], psol.e_m[1], psol.v_int[0,0], psol.v_int[1,1], psol.v_int[0,1], f_ref)
+#             s_bind_1_soln_arr[i,j,:] = s_bind_ave_a
+#             s_bind_2_soln_arr[i,j,:] = s_bind_ave_b
     
-    return s_bind_1_soln_arr, s_bind_2_soln_arr
+#     return s_bind_1_soln_arr, s_bind_2_soln_arr
