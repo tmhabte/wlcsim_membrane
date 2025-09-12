@@ -159,11 +159,17 @@ def calc_sf2(psol, corrs, phius, k):
     # MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
     # AP: n_p N_A N_P / V_sys = N_A phi_p
     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
-    # AuAu: phi_Au * N_A^2 / V_sys = ? can also try N_A**1
+    # AuAu: phi_Au * N_A**2 / V_sys = ? can also try N_A**1
     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
           [0, 0, 0, S_ss]]
+    
+    # print("ALT, nonalgebraic constants- assuming extra n_Au")
+    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au**2*N_A**1, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu**2*N_B**1, 0],\
+    #       [0, 0, 0, S_ss]]
     return S2
 
     # applying saddle point result to bound and unbound sfs- not fully ALGEBRAICALLY FOUNDED! zp/zp
