@@ -469,10 +469,11 @@ def calc_sf3(psol, corrs, phius, k1, k2, k12):
         index2 = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
 
         # PPP  -> [0,0,0]
-        S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
+        # S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
+        S3_arr[0,0,0] += S_AAA31(kA, kB, b_P, N_P)
 
-        S3_Au += np.sum(S_AAA31(kA, kB, b_A, N_A))
-        S3_Bu += np.sum(S_AAA31(kA, kB, b_A, N_A))
+        S3_Au += S_AAA31(kA, kB, b_A, N_A)
+        S3_Bu += S_AAA31(kA, kB, b_A, N_A)
 
         # S3_arr
         # AAA -> [1,1,1]
@@ -779,10 +780,12 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[1,1,1,1] += np.sum(sA*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
         S4_arr[2,2,2,2] += np.sum(sB*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
 
-        S4_arr[0,0,0,0] += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_P, N_P))
-        S4_Au += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
-        S4_Bu += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_B, N_B))
-
+        # S4_arr[0,0,0,0] += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_P, N_P))
+        # S4_Au += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
+        # S4_Bu += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_B, N_B))
+        S4_arr[0,0,0,0] += S_AAAA41(kA, kB,kC, -kA-kB-kC, b_P, N_P)
+        S4_Au += S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A)
+        S4_Bu += S_AAAA41(kA, kB,kC, -kA-kB-kC, b_B, N_B)
 
         index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
         I = S_AAAA42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
@@ -1141,6 +1144,7 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
     S4_arr[2,2,2,2] += S4_Bu
 
 
+    S4_arr[3,3,3,3] += solv_cons
 
 
         # # #AAAA
