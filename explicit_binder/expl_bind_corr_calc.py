@@ -1,5 +1,9 @@
 # import numpy as np
 from expl_bind_binding_calc import *
+from expl_bind_s3_integrals import *
+from expl_bind_s4_integrals import *
+
+
 # before- each polymer-based sf had an identical sf integral, 
 #   only with different binding state correlation average. 
 #   this meant that could calculate all nth order sfs identically, then just
@@ -360,10 +364,766 @@ def calc_sf2(psol, corrs, phius, k):
     # delta = j1 - j2
 
 
+
+
+
+
+
+
 # define a set of integral functions (e.g. S_AAA^(3,1)), and create a function that, when given appropriate
 # integral functions for (3,1), (3,2), and (3,3) and the k and b and corr identities, returns the sf3
 
-import numpy as np
+
+
+
+
+
+
+def calc_sf3(psol, corrs, phius, k1, k2, k12):
+    """
+    Compute third-order structure factors for a single (k1,k2,k12).
+    Returns S3_arr with axes [species1, species2, species3] where
+      0 -> P, 1 -> A, 2 -> B
+    """
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    solv_cons = psol.solv_cons
+    phi_Au, phi_Bu = phius
+    phi_p = psol.phi_p
+    # phi_A = psol.phi_A
+    # phi_B = psol.phi_B
+
+    # phi_Ab = psol.phi_Ab
+    # phi_Au = psol.phi_Au
+    # phi_Bb = psol.phi_Bb
+    # phi_Bu = psol.phi_Bu
+
+    sA, sB = corrs
+    # correlations
+    sP = np.ones_like(sA)
+    sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)
+    sAsAsP = np.einsum("i,j,k->ijk", sA, sA, sP)
+    sAsPsP = np.einsum("i,j,k->ijk", sA, sP, sP)
+    sAsBsP = np.einsum("i,j,k->ijk", sA, sB, sP)
+
+    sBsBsB = np.einsum("i,j,k->ijk", sB, sB, sB)
+    sBsBsP = np.einsum("i,j,k->ijk", sB, sB, sP)
+    sBsPsP = np.einsum("i,j,k->ijk", sB, sP, sP)
+
+    sAsAsB = np.einsum("i,j,k->ijk", sA, sA, sB)
+    sAsBsB = np.einsum("i,j,k->ijk", sA, sB, sB)
+
+    # monomer index grid
+    j1, j2, j3 = np.indices((M, M, M))
+
+    # case permutations
+    case1     = [[k12, k1],  [j3, j2, j1]]
+    case1_deg = [[k1,  k12], [j1, j2, j3]]
+    case2     = [[k2,  k12], [j2, j1, j3]]
+    case2_deg = [[k12, k2],  [j3, j1, j2]]
+    case3     = [[-k2, k1],  [j2, j3, j1]]
+    case3_deg = [[k1, -k2],  [j1, j3, j2]]
+    case_arr  = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
+
+    #prefactors. assuming N_A = N_B
+
+    #ppp: np N_p^3 / V_sys = N_P^2 phi_P
+    ppp_pre = N_P**2 * phi_p
+    #ppa: np N_p^2 N_A / V_sys = N_P N_A phi_P
+    ppa_pre = N_P * N_A * phi_p
+    #paa: np N_p N_A^2 / V_sys = N_A^2 phi_P
+    paa_pre = N_A**2 * phi_p
+    # BOUND aaa: np N_A^3 / V_sys = np N_A^3 N_P / (v_sys N_P) = N_A^3 phi_P / N_P
+    aaa_pre = (N_A**3 * phi_p) / N_P
+
+    # UNBOUND
+    aaaU_pre = phi_Au * N_A**3
+    bbbU_pre = phi_Bu * N_B**3
+
+    S3_arr = np.zeros((4, 4, 4), dtype=float)
+    S3_Au = 0
+    S3_Bu = 0
+
+    # helper for masked sums
+    def masked_sum(corr, I, mask):
+        m = (mask != 0)
+        if not np.any(m):
+            return 0.0
+        return np.sum(corr[m] * I[m])
+
+    # loop over cases and accumulate into S3_arr
+    for cse in case_arr:
+        kA, kB = cse[0]
+        ordered_js = cse[1]
+
+        # masks
+        index1 = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
+        index2 = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
+
+        # PPP  -> [0,0,0]
+        S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
+
+        S3_Au += np.sum(S_AAA31(kA, kB, b_A, N_A))
+        S3_Bu += np.sum(S_AAA31(kA, kB, b_A, N_A))
+
+        # S3_arr
+        # AAA -> [1,1,1]
+        S3_arr[1,1,1] += np.sum(sA * S_AAA31(kA, kB, b_A, N_A))
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr1 = sAsAsA / sA[ordered_js[0]]   # careful: ordered_js[0] indexes into sA
+        S3_arr[1,1,1] += masked_sum(corr1, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        corr2 = sAsAsA
+        S3_arr[1,1,1] += masked_sum(corr2, I, index2)
+
+        # AAB -> [1,1,2]
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsB / sA[ordered_js[0]]
+        S3_arr[1,1,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,1,2] += masked_sum(sAsAsB, I, index2)
+
+
+        # ABB -> [1,2,2]
+        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsB / sB[ordered_js[2]]
+        S3_arr[1,2,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,2,2] += masked_sum(sAsBsB, I, index2)
+
+
+        # AAP -> [1,1,0]
+        S3_arr[1,1,0] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+        I = S_AAP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsP / sA[ordered_js[0]]
+        S3_arr[1,1,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_A, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,1,0] += masked_sum(sAsAsP, I, index2)
+
+
+        # APA -> [1,0,1]
+        S3_arr[1,0,1] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsAsP
+        S3_arr[1,0,1] += masked_sum(corr, I, index1)
+        # handling As on different monomers
+        S3_arr[1,1,0] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,0,1] += masked_sum(sAsAsP, I, index2)
+
+
+        # BBB -> [2,2,2]
+        S3_arr[2,2,2] += np.sum(sB * S_AAA31(kA, kB, b_B, N_B))
+        I = S_AAA32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsB / sB[ordered_js[0]]
+        S3_arr[2,2,2] += masked_sum(corr, I, index1)
+        I = S_AAA33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,2,2] += masked_sum(sBsBsB, I, index2)
+
+
+        # BBP -> [2,2,0]
+        S3_arr[2,2,0] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+        I = S_AAP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsP / sB[ordered_js[0]]
+        S3_arr[2,2,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_B, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,2,0] += masked_sum(sBsBsP, I, index2)
+
+
+        # BPB -> [2,0,2]
+        S3_arr[2,0,2] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+        I = S_APA32(kA, kB, b_B, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sBsBsP
+        S3_arr[2,0,2] += masked_sum(corr, I, index1)
+        # also add to BBP
+        S3_arr[2,2,0] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,2] += masked_sum(sBsBsP, I, index2)
+
+
+        # ABP -> [1,2,0]
+        I = S_APA32(kA, kB, b_A, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsP
+        S3_arr[1,2,0] += masked_sum(corr, I, index1)
+        I = S_AAP33(kA, kB, -kA-kB, b_A, b_B, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,2,0] += masked_sum(sAsBsP, I, index2)
+
+
+        # BPA -> [2,0,1]
+        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        corr = sAsBsP
+        S3_arr[2,0,1] += masked_sum(corr, I, index1)
+        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,1] += masked_sum(sAsBsP, I, index2)
+
+
+        # APP -> [1,0,0] (only depends on single-k part; averaged over cases in original)
+        S3_arr[1,0,0] += np.sum(sA * S_APP31(kA, b_A, N_A)) / len(case_arr)
+        I = S_APP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index1)
+        I = S_APP33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index2)
+
+
+        # BPP -> [2,0,0]
+        S3_arr[2,0,0] += np.sum(sB * S_APP31(kA, b_B, N_B)) / len(case_arr)
+        I = S_APP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index1)
+        I = S_APP33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+                    ordered_js[0], ordered_js[1], ordered_js[2])
+        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index2)
+
+    S3_arr[0,0,0] *= ppp_pre
+    S3_Au *= aaaU_pre
+    S3_Bu *= bbbU_pre
+    S3_arr[1,1,1] *= aaa_pre
+
+    S3_arr[1,1,2] *= aaa_pre
+    S3_arr[1,2,2] *= aaa_pre
+    S3_arr[1,1,0] *= paa_pre
+    S3_arr[1,0,1] *= paa_pre
+    S3_arr[2,2,2] *= aaa_pre
+    S3_arr[2,2,0] *= paa_pre
+    S3_arr[2,0,2] *= paa_pre
+    S3_arr[1,2,0] *= paa_pre
+    S3_arr[2,0,1] *= paa_pre
+    S3_arr[1,0,0] *= ppa_pre
+    S3_arr[2,0,0] *= ppa_pre
+    # PAA = AAP
+    S3_arr[0,1,1] = S3_arr[1,1,0]
+
+    # PBB = BBP
+    S3_arr[0,2,2] = S3_arr[2,2,0]
+
+    # BAP = PAB = PBA = ABP
+    # BAP [2,1,0], PAB [0,1,2], PBA [0,2,1], ABP [1,2,0]
+    S3_arr[2,1,0] = S3_arr[0,1,2] = S3_arr[0,2,1] = S3_arr[1,2,0]
+
+    # APB = BPA
+    # APB [1,0,2], BPA [2,0,1]
+    S3_arr[1,0,2] = S3_arr[2,0,1]
+
+    # PPA = PAP = APP
+    # PPA [0,0,1], PAP [0,1,0], APP [1,0,0]
+    S3_arr[0,0,1] = S3_arr[0,1,0] = S3_arr[1,0,0]
+
+    # PPB = PBP = BPP
+    # PPB [0,0,2], PBP [0,2,0], BPP [2,0,0]
+    S3_arr[0,0,2] = S3_arr[0,2,0] = S3_arr[2,0,0]
+
+    # ABA = BAA = AAB
+    # ABA [1,2,1], BAA [2,1,1], AAB [1,1,2]
+    S3_arr[1,2,1] = S3_arr[2,1,1] = S3_arr[1,1,2]
+
+    # BAB = BBA = ABB
+    # BAB [2,1,2], BBA [2,2,1], ABB [1,2,2]
+    S3_arr[2,1,2] = S3_arr[2,2,1] = S3_arr[1,2,2]
+
+    # ADD UNBOUND CONTRIBUTION
+    S3_arr[1,1,1] += S3_Au
+    S3_arr[2,2,2] += S3_Bu
+
+    S3_arr[3,3,3] += solv_cons
+    return S3_arr
+
+
+
+def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
+    # [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    solv_cons = psol.solv_cons
+    phi_Au, phi_Bu = phius
+    phi_p = psol.phi_p
+    # phi_A = psol.phi_A
+    # phi_B = psol.phi_B
+
+    # phi_Ab = psol.phi_Ab
+    # phi_Au = psol.phi_Au
+    # phi_Bb = psol.phi_Bb
+    # phi_Bu = psol.phi_Bu
+
+    sA, sB = corrs
+    sP = np.ones_like(sA)
+    sAsA = np.outer(sA, sA)
+    sBsB = np.outer(sB, sB)
+    sAsB = np.outer(sA, sB)
+
+    sAsAsAsA = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sA)
+    sAsAsAsP = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sP)
+    sAsAsPsP = np.einsum("i,j,k,l->ijkl", sA, sA, sP, sP)
+    sAsPsPsP = np.einsum("i,j,k,l->ijkl", sA, sP, sP, sP)
+
+    sAsAsAsB = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sB)
+    sAsAsBsB = np.einsum("i,j,k,l->ijkl", sA, sA, sB, sB)
+    sAsBsBsB = np.einsum("i,j,k,l->ijkl", sA, sB, sB, sB)
+    sBsBsBsB = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sB)
+
+    sAsAsAsP = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sP)
+    sAsAsPsP = np.einsum("i,j,k,l->ijkl", sA, sA, sP, sP)
+    sAsPsPsP = np.einsum("i,j,k,l->ijkl", sA, sP, sP, sP)
+
+    sAsAsBsP = np.einsum("i,j,k,l->ijkl", sA, sA, sB, sP)
+    sAsBsBsP = np.einsum("i,j,k,l->ijkl", sA, sB, sB, sP)
+    sBsBsBsP = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sP)
+    sAsBsPsP = np.einsum("i,j,k,l->ijkl", sA, sB, sP, sP)
+
+    sBsBsBsP = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sP)
+    sBsBsPsP = np.einsum("i,j,k,l->ijkl", sB, sB, sP, sP)
+    sBsPsPsP = np.einsum("i,j,k,l->ijkl", sB, sP, sP, sP)
+
+
+    grid = np.indices((M,M,M,M))
+    j1 = grid[0]
+    j2 = grid[1]
+    j3 = grid[2]
+    j4 = grid[3]
+
+    # k2 = k_vec_2[i]
+    # k3 = k_vec_3[i]
+    k12 = k1 + k2
+    k13 = k1 + k3
+    k23 = k2 + k3
+    # k123 = k1 + k2 + k3
+    
+    # CASE 1; kA = k1 + k2 + k3; kB = k_1 + k_2; kC = k_1  S4 > S3 > S2 > S1 (and reverse). All cases on wlcstat
+    case1 = [[k123, k12, k1], [j4, j3, j2, j1]]
+    case2 = [[k123, k12, k2], [j4, j3, j1, j2]]
+    case3 = [[k123, k13, k1], [j4, j2, j3, j1]]
+    case4 = [[k123, k23, k2], [j4, j1, j3, j2]]
+    case5 = [[k123, k13, k3], [j4, j2, j1, j3]]
+    case6 = [[k123, k23, k3], [j4, j1, j2, j3]]
+    case7 = [[-k3, k12, k1], [j3, j4, j2, j1]]
+    case8 = [[-k3, k12, k2], [j3, j4, j1, j2]]
+    case9 = [[-k2, k13, k1], [j2, j4, j3, j1]]
+    case10 = [[-k1, k23, k2], [j1, j4, j3, j2]]
+    case11 = [[-k2, k13, k3], [j2, j4, j1, j3]]
+    case12 = [[-k1, k23, k3], [j1, j4, j2, j3]]
+    
+    case1_deg = [[k1, k12, k123], [j1, j2, j3, j4]]
+    case2_deg = [[k2, k12, k123], [j2, j1, j3, j4]]
+    case3_deg = [[k1, k13, k123], [j1, j3, j2, j4]]
+    case4_deg = [[k2, k23, k123], [j2, j3, j1, j4]]
+    case5_deg = [[k3, k13, k123], [j3, j1, j2, j4]]
+    case6_deg = [[k3, k23, k123], [j3, j2, j1, j4]]
+    case7_deg = [[k1, k12, -k3], [j1, j2, j4, j3]]
+    case8_deg = [[k2, k12, -k3], [j2, j1, j4, j3]]
+    case9_deg = [[k1, k13, -k2], [j1, j3, j4, j2]]
+    case10_deg = [[k2, k23, -k1], [j2, j3, j4, j1]]
+    case11_deg = [[k3, k13, -k2], [j3, j1, j4, j2]]
+    case12_deg = [[k3, k23, -k1], [j3, j2, j4, j1]]
+
+
+
+    case_arr = [case1, case2, case3, case4, case5, case6, \
+                case7, case8, case9, case10, case11, case12, \
+                case1_deg, case2_deg, case3_deg, case4_deg, case5_deg, case6_deg, \
+                case7_deg, case8_deg, case9_deg, case10_deg, case11_deg, case12_deg]
+    
+
+    #prefactors. assuming N_A = N_B
+
+    #pppp: np N_p^4 / V_sys = N_P^3 phi_P
+    pppp_pre = N_P**3 * phi_p
+    #pppa: np N_p^3 N_A / V_sys = N_P^2 N_A phi_P
+    pppa_pre = N_P**2 * N_A * phi_p
+    #ppaa: np N_p^2 N_A^2 / V_sys = N_A^2 N_P phi_P
+    ppaa_pre = N_P * N_A**2 * phi_p
+    #paaa: np N_p N_A^3 / V_sys = N_A^3 phi_P
+    paaa_pre = N_A**3 * phi_p
+
+    # BOUND aaaa: np N_A^4 / V_sys = np N_A^4 N_P / (v_sys N_P) = N_A^4 phi_P / N_P
+    aaaa_pre = (N_A**4 * phi_p) / N_P
+
+    # UNBOUND
+    aaaaU_pre = phi_Au * N_A**4
+    bbbbU_pre = phi_Bu * N_B**4
+
+    S4_arr = np.zeros((4,4,4,4)) 
+    S4_Au = 0
+    S4_Bu = 0
+
+
+    for cse in case_arr:
+        kA, kB, kC = cse[0]
+        ordered_js = cse[1]
+        
+        # AAAA
+        S4_arr[1,1,1,1] += np.sum(sA*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
+        S4_arr[2,2,2,2] += np.sum(sB*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
+
+        S4_arr[0,0,0,0] += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_P, N_P))
+
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAA42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsAsA / (sA[ordered_js[1]] * sA[ordered_js[2]])
+        S4_arr[1,1,1,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsB / (sB[ordered_js[1]] * sB[ordered_js[2]])
+        S4_arr[2,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsAsB / (sA[ordered_js[1]] * sA[ordered_js[2]])
+        S4_arr[1,1,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsB / (sB[ordered_js[1]] * sB[ordered_js[2]])
+        S4_arr[1,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAA43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsA / (sA[ordered_js[1]])
+        S4_arr[1,1,1,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsB / (sB[ordered_js[1]])
+        S4_arr[2,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsAsB / (sA[ordered_js[1]])
+        S4_arr[1,1,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsB / (sB[ordered_js[1]])
+        S4_arr[1,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsB / (sA[ordered_js[1]])
+        S4_arr[1,1,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAA44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsA 
+        S4_arr[1,1,1,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsB 
+        S4_arr[2,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsAsB 
+        S4_arr[1,1,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsB 
+        S4_arr[1,2,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsB 
+        S4_arr[1,1,2,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsB 
+        S4_arr[1,2,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+
+        # AAAP
+        S4_arr[1,1,1,0] += np.sum(sA*S_AAAP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[2,2,2,0] += np.sum(sB*S_AAAP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsAsP / (sA[ordered_js[1]] * sA[ordered_js[2]])
+        S4_arr[1,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP / (sB[ordered_js[1]] * sB[ordered_js[2]])
+        S4_arr[2,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAP43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsP / (sA[ordered_js[1]])
+        S4_arr[1,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP / (sB[ordered_js[1]])
+        S4_arr[2,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP / (sA[ordered_js[1]])
+        S4_arr[1,1,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP / (sB[ordered_js[1]])
+        S4_arr[2,2,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsP
+        S4_arr[1,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP 
+        S4_arr[2,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP
+        S4_arr[1,1,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP
+        S4_arr[2,2,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+
+        # #AAPA → (1,1,0,1)
+        # #BBPB → (2,2,0,2)
+
+        S4_arr[1,1,0,1] += np.sum(sA*S_AAAP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[2,2,0,2] += np.sum(sB*S_AAAP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsAsP / (sA[ordered_js[1]] * sA[ordered_js[2]])
+        S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP / (sB[ordered_js[1]] * sB[ordered_js[2]])
+        S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        I = S_AAPA42_AAPtriple_Aisolated(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsAsP / (sA[ordered_js[1]] * sA[ordered_js[2]])
+        S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP / (sB[ordered_js[1]] * sB[ordered_js[2]])
+        S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAPA43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsP / (sA[ordered_js[1]])
+        S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP / (sB[ordered_js[1]])
+        S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAAP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsAsP
+        S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsBsP
+        S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        # #AAPP → (1,1,0,0)
+        # #BBPP → (2,2,0,0)
+
+        S4_arr[1,1,0,0] += np.sum(sA*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[2,2,0,0] += np.sum(sB*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAPP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsPsP / (sA[ordered_js[1]])
+        S4_arr[1,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP / (sB[ordered_js[1]])
+        S4_arr[2,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAPP43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP / (sA[ordered_js[1]])
+        S4_arr[1,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP / (sB[ordered_js[1]])
+        S4_arr[2,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_AAPP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP
+        S4_arr[1,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsPsP
+        S4_arr[1,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP
+        S4_arr[2,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        # #APPA → (1,0,0,1)
+        # #BPPB → (2,0,0,2)
+
+        S4_arr[1,0,0,1] += np.sum(sA*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[2,0,0,2] += np.sum(sB*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPA42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsPsP / (sA[ordered_js[1]])
+        S4_arr[1,0,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP / (sB[ordered_js[1]])
+        S4_arr[2,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsPsP
+        S4_arr[1,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPA43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP  # As are on different monomers
+        S4_arr[1,0,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP  # Bs are on different monomers
+        S4_arr[2,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsPsP
+        S4_arr[1,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPA44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP
+        S4_arr[1,0,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP
+        S4_arr[2,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsPsP
+        S4_arr[1,0,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        # #PAAP → (0,1,1,0)
+        # #PBBP → (0,2,2,0)
+
+        S4_arr[0,1,1,0] += np.sum(sA*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[0,2,2,0] += np.sum(sB*S_AAPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_PAAP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsAsPsP / (sA[ordered_js[1]])
+        S4_arr[0,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP / (sB[ordered_js[1]])
+        S4_arr[0,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_PAAP43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP  # As are on different monomers
+        S4_arr[0,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP  # Bs are on different monomers
+        S4_arr[0,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_PAAP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsAsPsP
+        S4_arr[0,1,1,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsBsPsP
+        S4_arr[0,2,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsPsP
+        S4_arr[0,1,2,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        #APPP → (1,0,0,0)
+        #BPPP → (2,0,0,0)
+        S4_arr[1,0,0,0] += np.sum(sA*S_APPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[2,0,0,0] += np.sum(sB*S_APPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsPsPsP
+        S4_arr[1,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP
+        S4_arr[2,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPP43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsPsPsP
+        S4_arr[1,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP
+        S4_arr[2,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsPsPsP
+        S4_arr[1,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP
+        S4_arr[2,0,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+
+        #PAPP → (0,1,0,0)
+        #PBPP → (0,2,0,0)
+        S4_arr[0,1,0,0] += np.sum(sA*S_APPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+        S4_arr[0,2,0,0] += np.sum(sB*S_APPP41(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M))
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_PAPP42(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
+        corr = sAsPsPsP
+        S4_arr[0,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP
+        S4_arr[0,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPP43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
+        corr = sAsPsPsP  # As are on different monomers
+        S4_arr[0,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP  # As are on different monomers
+        S4_arr[0,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+        index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
+        I = S_APPP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
+        corr = sAsPsPsP
+        S4_arr[0,1,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sBsPsPsP
+        S4_arr[0,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
+    S4_arr[0,0,0,0] *= pppp_pre
+    S4_arr[1,1,1,1] *= aaaa_pre
+    S4_arr[2,2,2,2] *= aaaa_pre
+    S4_arr[1,1,1,2] *= aaaa_pre
+    S4_arr[1,2,2,2] *= aaaa_pre
+    S4_arr[1,1,2,2] *= aaaa_pre
+    S4_arr[1,2,1,2] *= aaaa_pre #7
+
+    S4_arr[1,1,1,0] *= paaa_pre
+    S4_arr[2,2,2,0] *= paaa_pre
+    S4_arr[1,1,2,0] *= paaa_pre
+    S4_arr[2,2,1,0] *= paaa_pre
+    S4_arr[1,1,0,1] *= paaa_pre
+    S4_arr[2,2,0,2] *= paaa_pre #6
+
+    S4_arr[1,1,0,0] *= ppaa_pre
+    S4_arr[2,2,0,0] *= ppaa_pre
+    S4_arr[1,2,0,0] *= ppaa_pre
+    S4_arr[1,0,0,1] *= ppaa_pre
+    S4_arr[2,0,0,2] *= ppaa_pre
+    S4_arr[1,0,0,2] *= ppaa_pre
+    S4_arr[0,1,1,0] *= ppaa_pre
+    S4_arr[0,2,2,0] *= ppaa_pre
+    S4_arr[0,1,2,0] *= ppaa_pre #9
+
+    S4_arr[1,0,0,0] *= pppa_pre
+    S4_arr[2,0,0,0] *= pppa_pre
+    S4_arr[0,1,0,0] *= pppa_pre
+    S4_arr[0,2,0,0] *= pppa_pre #4
+
+
+    S4_arr[2,1,1,1] = S4_arr[1,2,1,1] = S4_arr[1,1,2,1] = S4_arr[1,1,1,2]
+    S4_arr[2,2,2,1] = S4_arr[2,2,1,2] = S4_arr[2,1,2,2] = S4_arr[1,2,2,2]
+    S4_arr[2,2,1,1] = S4_arr[1,2,2,1] = S4_arr[2,1,1,2] = S4_arr[1,1,2,2]
+    S4_arr[2,1,2,1] = S4_arr[1,2,1,2] #10
+
+
+
+    S4_arr[0,1,1,1] = S4_arr[1,1,1,0]
+    S4_arr[0,2,2,2] = S4_arr[2,2,2,0] #2
+
+    S4_arr[1,2,1,0] = S4_arr[0,1,2,1] = S4_arr[2,1,1,0] = S4_arr[0,2,1,1] \
+        = S4_arr[0,1,1,2] = S4_arr[1,1,2,0]
+    S4_arr[2,1,2,0] = S4_arr[0,2,1,2] = S4_arr[1,2,2,0] = S4_arr[0,1,2,2] \
+        = S4_arr[0,2,2,1] = S4_arr[2,2,1,0] #10
+    
+
+    S4_arr[1,0,1,1] = S4_arr[1,1,0,1]
+    S4_arr[2,0,2,2] = S4_arr[2,2,0,2] #2
+
+    S4_arr[2,0,0,1] = S4_arr[1,0,0,2]
+    S4_arr[0,2,1,0] = S4_arr[0,1,2,0]
+    S4_arr[2,1,0,0] = S4_arr[0,0,1,2] = S4_arr[0,0,2,1] = S4_arr[1,2,0,0] 
+    S4_arr[0,0,1,1] = S4_arr[1,1,0,0]
+    S4_arr[0,0,2,2] = S4_arr[2,2,0,0] #7
+
+
+    S4_arr[0,0,1,0] = S4_arr[0,1,0,0]
+    S4_arr[0,0,2,0] = S4_arr[0,2,0,0]
+    S4_arr[0,0,0,1] = S4_arr[1,0,0,0]
+    S4_arr[0,0,0,2] = S4_arr[2,0,0,0] #4
+
+
+    # ADD UNBOUND !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO!!!!
+
+
+
+
+
+        # # #AAAA
+        # S4_AAAA[i] += np.sum(sA*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
+    #     xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
+    #     xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
+    #     xm_C = (1/6) * N_m * b**2 * np.linalg.norm(kC)**2
+    #     # print("-----------------")
+    #     # print("ks: ", kA, kB, kC)
+
+    #     C = calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js)
+        
+    # solvent_index = sig_inds[-1] + 1 # solvent index is always the last one
+
+    # for a1, a2, a3, a4 in product(sig_inds+[solvent_index], repeat=4):
+    #     if (a1 == a2 == a3 == a4 == solvent_index): #at S^{(4)}_{SSSS}
+    #         S4_arr[a1][a2][a3][a4] += alpha
+    #     elif (a1 == solvent_index or a2 == solvent_index or a3 == solvent_index or a4 == solvent_index): #at S^{(4)}_{Sxxx}
+    #         S4_arr[a1][a2][a3][a4] += 0
+    #     else:
+    #         S4_arr[a1][a2][a3][a4] += np.sum((1/M**4) * M4_arr[a1][a2][a3][a4] * C)*(N**4) 
+
+    return S4_arr
+# import numpy as np
+
 
 # def S_AAA31_new(k_alp, k_bet, b, N_A, tol=1e-10):
 #     """
@@ -398,517 +1158,707 @@ import numpy as np
 #     termB = ((1 - np.exp(-x2*N_A))/x2 - (1 - np.exp(-x1*N_A))/x1) / (x1 - x2)
 #     return (termA - termB) / x2
 
-def S_AAA31(k_alp, k_bet, b, N_A):
-    """
-    j3 = j2 = j1
-    Triple integral:
-    I = \int_0^N dn3 \int_0^n3 dn2 \int_0^n2 dn1 
-        exp[-x1 (n3-n2) - x2 (n2-n1)]
-    """
-    x1 = (b**2/6) * k_alp**2
-    x2 = (b**2/6) * k_bet**2
+# def S_AAA31(k_alp, k_bet, b, N_A):
+#     """
+#     j3 = j2 = j1
+#     Triple integral:
+#     I = \int_0^N dn3 \int_0^n3 dn2 \int_0^n2 dn1 
+#         exp[-x1 (n3-n2) - x2 (n2-n1)]
+#     """
+#     x1 = (b**2/6) * k_alp**2
+#     x2 = (b**2/6) * k_bet**2
 
-    # Handle x1 ≈ x2 with a tolerance
-    if np.isclose(x1, x2, atol=1e-12):
-        return (N_A/x1**2 
-                + (N_A*x1**2*np.exp(-x1*N_A) - 2*x1*(1 - np.exp(-x1*N_A)))/x1**4)
-    elif np.isclose(x2, 0, atol=1e-12):
-        return (2-2*np.exp(-x1*N_A) - 2*x1*N_A + N_A**2*x1**2)/ (2*x1**3)
-    elif np.isclose(x1, 0, atol=1e-12):
-        return (2-2*np.exp(-x2*N_A) - 2*x2*N_A + N_A**2*x2**2)/ (2*x2**3)
-    else:
-        return (N_A/(x1*x2) 
-                + (1 - np.exp(-x1*N_A))/(x1**2*(x1 - x2)) 
-                - (1 - np.exp(-x2*N_A))/(x2**2*(x1 - x2)))
+#     # Handle x1 ≈ x2 with a tolerance
+#     if np.isclose(x1, x2, atol=1e-12):
+#         return (N_A/x1**2 
+#                 + (N_A*x1**2*np.exp(-x1*N_A) - 2*x1*(1 - np.exp(-x1*N_A)))/x1**4)
+#     elif np.isclose(x2, 0, atol=1e-12):
+#         return (2-2*np.exp(-x1*N_A) - 2*x1*N_A + N_A**2*x1**2)/ (2*x1**3)
+#     elif np.isclose(x1, 0, atol=1e-12):
+#         return (2-2*np.exp(-x2*N_A) - 2*x2*N_A + N_A**2*x2**2)/ (2*x2**3)
+#     else:
+#         return (N_A/(x1*x2) 
+#                 + (1 - np.exp(-x1*N_A))/(x1**2*(x1 - x2)) 
+#                 - (1 - np.exp(-x2*N_A))/(x2**2*(x1 - x2)))
 
-import numpy as np
+# import numpy as np
 
-def S_AAA32_laplace(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
-    # FROM ANDY- laplace calculation, only for k2 != k3
-    assert k2 != k3
-    x1 = (bA**2/6) * k2**2 * N_A
-    x3 = (bA**2/6) * k3**2 * N_A
-    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
-    return 2\
-    * np.exp(-delJ3) * ( (1 / (x1*x3)) \
-    - (np.exp(-x1) / (x1 * (x3 - x1))) \
-    - (np.exp(-x3) / (x3 * (x1 - x3)))) \
-    * (1 / x3) * (1 - np.exp(-x3)) 
+# def S_AAA32_laplace(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+#     # FROM ANDY- laplace calculation, only for k2 != k3
+#     assert k2 != k3
+#     x1 = (bA**2/6) * k2**2 * N_A
+#     x3 = (bA**2/6) * k3**2 * N_A
+#     delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+#     return 2\
+#     * np.exp(-delJ3) * ( (1 / (x1*x3)) \
+#     - (np.exp(-x1) / (x1 * (x3 - x1))) \
+#     - (np.exp(-x3) / (x3 * (x1 - x3)))) \
+#     * (1 / x3) * (1 - np.exp(-x3)) 
 
 
-def S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1, tol = 1e-10):
-    """WRA
-    Compute
-    I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
-                                                     - X_del*k3^2 - bA^2/6*k3^2*n3]
-    X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
-    Branches:
-      1) x2 == x3
-      2) x2 == 0
-      3) x3 == 0 and delJ3 == 0 (Mathematica simplified result)
-      4) general case
-    """
-    x2 = (bA**2/6) * k2**2
-    x3 = (bA**2/6) * k3**2
-    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+# def S_AAA32(k2, k3, bA, bP, N_A, N_P, M, j3, j1, tol = 1e-10):
+#     """WRA
+#     Compute
+#     I = 2 * \int_0^{N_A} dn3 \int_0^{N_A} dn2 \int_0^{n2} dn1 exp[-bA^2/6*k3^2*n1 - bA^2/6*k2^2*(n2-n1)
+#                                                      - X_del*k3^2 - bA^2/6*k3^2*n3]
+#     X_del = C = (1/6)*(N_P/(M-1))*bP^2 * (j3-j1).
+#     Branches:
+#       1) x2 == x3
+#       2) x2 == 0
+#       3) x3 == 0 and delJ3 == 0 (Mathematica simplified result)
+#       4) general case
+#     """
+#     x2 = (bA**2/6) * k2**2
+#     x3 = (bA**2/6) * k3**2
+#     delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
     
-    #--- Case 1: x2 == x3 ---
-    if np.isclose(x2, x3, atol=tol):
-        num = (
-            2.0
-            * np.exp(-delJ3 - 2.0 * N_A * x3)
-            * ( -1.0 + np.exp(N_A * x3) )
-            * ( -1.0 + np.exp(N_A * x3) - N_A * x3 )
-        )
-        denom = x3**3
-        return num / denom
+#     #--- Case 1: x2 == x3 ---
+#     if np.isclose(x2, x3, atol=tol):
+#         num = (
+#             2.0
+#             * np.exp(-delJ3 - 2.0 * N_A * x3)
+#             * ( -1.0 + np.exp(N_A * x3) )
+#             * ( -1.0 + np.exp(N_A * x3) - N_A * x3 )
+#         )
+#         denom = x3**3
+#         return num / denom
 
-    # --- Case 2: x2 == 0 ---
-    if np.isclose(x2, 0.0, atol=tol):
-        num = (
-            np.exp(-delJ3 - 2.0 * N_A * x3)
-            * ( -1.0 + np.exp(N_A * x3) )
-            * ( 2.0 + 2.0 * np.exp(N_A * x3) * (-1.0 + N_A * x3) )
-        )
-        denom = x3**3
-        return num / denom
+#     # --- Case 2: x2 == 0 ---
+#     if np.isclose(x2, 0.0, atol=tol):
+#         num = (
+#             np.exp(-delJ3 - 2.0 * N_A * x3)
+#             * ( -1.0 + np.exp(N_A * x3) )
+#             * ( 2.0 + 2.0 * np.exp(N_A * x3) * (-1.0 + N_A * x3) )
+#         )
+#         denom = x3**3
+#         return num / denom
 
-    # --- Case 3: x3 == 0 ---
-    if np.isclose(x3, 0.0, atol=tol): #and np.isclose(delJ3, 0.0, atol=tol):
-        if np.isclose(x2, 0.0, atol=tol):
-            # Limit x2 -> 0 using series expansion: (-1 + exp(-N_A x2) + N_A x2)/x2^2 -> N_A^2
-            return N_A**2
-        # Mathematica simplified numerator for x3=0, delJ3=0
-        return np.ones_like(delJ3)*2.0 * N_A * (-1.0 + np.exp(-N_A * x2) + N_A * x2) / (x2**2)
+#     # --- Case 3: x3 == 0 ---
+#     if np.isclose(x3, 0.0, atol=tol): #and np.isclose(delJ3, 0.0, atol=tol):
+#         if np.isclose(x2, 0.0, atol=tol):
+#             # Limit x2 -> 0 using series expansion: (-1 + exp(-N_A x2) + N_A x2)/x2^2 -> N_A^2
+#             return N_A**2
+#         # Mathematica simplified numerator for x3=0, delJ3=0
+#         return np.ones_like(delJ3)*2.0 * N_A * (-1.0 + np.exp(-N_A * x2) + N_A * x2) / (x2**2)
 
-    # --- General case ---
-    num = (
-        2*np.exp(-delJ3 - N_A * (x2 + 3.0 * x3))
-        * ( -1.0 + np.exp(N_A * x3) )
-        * ( np.exp(N_A * (x2 + x3)) * x2
-            - np.exp(2.0 * N_A * x3) * x3
-            + np.exp(N_A * (x2 + 2.0 * x3)) * (-x2 + x3) )
-    )
-    denom = x2 * (x3**2) * (-x2 + x3)
+#     # --- General case ---
+#     num = (
+#         2*np.exp(-delJ3 - N_A * (x2 + 3.0 * x3))
+#         * ( -1.0 + np.exp(N_A * x3) )
+#         * ( np.exp(N_A * (x2 + x3)) * x2
+#             - np.exp(2.0 * N_A * x3) * x3
+#             + np.exp(N_A * (x2 + 2.0 * x3)) * (-x2 + x3) )
+#     )
+#     denom = x2 * (x3**2) * (-x2 + x3)
     
-    return num / denom
+#     return num / denom
 
-def S_AAA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
-    """ 
-    Compute the triple integral:
-    I = \int_0^N_A dn1 \int_0^N_A dn2 \int_0^N_A dn3 exp[ ... ]
-    """
-    a1 = (bA**2 / 6.0) * k1**2
-    a2 = (bA**2 / 6.0) * k2**2
-    a3 = (bA**2 / 6.0) * k3**2
+# def S_AAA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
+#     """ 
+#     Compute the triple integral:
+#     I = \int_0^N_A dn1 \int_0^N_A dn2 \int_0^N_A dn3 exp[ ... ]
+#     """
+#     a1 = (bA**2 / 6.0) * k1**2
+#     a2 = (bA**2 / 6.0) * k2**2
+#     a3 = (bA**2 / 6.0) * k3**2
     
-    # Propagator prefactor
-    const = np.exp(
-        - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
-    )
+#     # Propagator prefactor
+#     const = np.exp(
+#         - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
+#     )
     
-    def f(a):
-        return (1 - np.exp(-a * N_A)) / a if a > 1e-14 else N_A
+#     def f(a):
+#         return (1 - np.exp(-a * N_A)) / a if a > 1e-14 else N_A
     
-    return const * f(a1) * f(a2) * f(a3)
+#     return const * f(a1) * f(a2) * f(a3)
 
-import numpy as np
+# import numpy as np
 
-def S_AAP31(k_alpha, k_beta, bA, N_A):
-    """
-    Compute the AAP31 case 1 integral:
-    I = ∫_0^N_A dn3 ∫_0^n3 dn2 exp[-(1/6)bA^2 k_alpha^2 (n3-n2) - (1/6)bA^2 k_beta^2 n2]
-    """
-    a_alpha = (bA**2 / 6.0) * k_alpha**2
-    a_beta  = (bA**2 / 6.0) * k_beta**2
+# def S_AAP31(k_alpha, k_beta, bA, N_A):
+#     """
+#     Compute the AAP31 case 1 integral:
+#     I = ∫_0^N_A dn3 ∫_0^n3 dn2 exp[-(1/6)bA^2 k_alpha^2 (n3-n2) - (1/6)bA^2 k_beta^2 n2]
+#     """
+#     a_alpha = (bA**2 / 6.0) * k_alpha**2
+#     a_beta  = (bA**2 / 6.0) * k_beta**2
     
-    def f(a):
-        if np.isclose(a, 0.0, atol=1e-14):
-            return N_A
-        return (1 - np.exp(-a * N_A)) / a
+#     def f(a):
+#         if np.isclose(a, 0.0, atol=1e-14):
+#             return N_A
+#         return (1 - np.exp(-a * N_A)) / a
     
-    if np.isclose(a_alpha, a_beta, atol=1e-14):
-        # limit case: a_alpha = a_beta
-        return 0.5 * f(a_alpha) * N_A
-    else:
-        return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
+#     if np.isclose(a_alpha, a_beta, atol=1e-14):
+#         # limit case: a_alpha = a_beta
+#         return 0.5 * f(a_alpha) * N_A
+#     else:
+#         return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
 
-import numpy as np
+# import numpy as np
 
-# def S_AAP32(k2, k3, bA, bP, N_A, N_P, n_i):
-def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+# # def S_AAP32(k2, k3, bA, bP, N_A, N_P, n_i):
+# def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
      
       
-    """
-    Compute the AAP32 (case 2) integral:
+#     """
+#     Compute the AAP32 (case 2) integral:
     
-    I = (2){ PartA + PartB } 
-    with structure given in the problem.
-    """
-    a2 = (bA**2 / 6.0) * k2**2
-    a3 = (bA**2 / 6.0) * k3**2
-    c3 = (bP**2 / 6.0) * k3**2
-    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+#     I = (2){ PartA + PartB } 
+#     with structure given in the problem.
+#     """
+#     a2 = (bA**2 / 6.0) * k2**2
+#     a3 = (bA**2 / 6.0) * k3**2
+#     c3 = (bP**2 / 6.0) * k3**2
+#     delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
 
-    # G(a2,a3,N_A): n2,n1 contribution
-    if np.isclose(a2, a3, atol=1e-14):
-        G = (1.0 / a2**2) * (1 - np.exp(-a2 * N_A) * (1 + a2 * N_A))
-    else:
-        G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
+#     # G(a2,a3,N_A): n2,n1 contribution
+#     if np.isclose(a2, a3, atol=1e-14):
+#         G = (1.0 / a2**2) * (1 - np.exp(-a2 * N_A) * (1 + a2 * N_A))
+#     else:
+#         G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
     
-    # n3 contribution: part A + part B
-    n3_factor = np.exp(-delJ3)
+#     # n3 contribution: part A + part B
+#     n3_factor = np.exp(-delJ3)
 
-    # if np.isclose(c3, 0.0, atol=1e-14):
-    #     n3_factor = (N_P - n_i) + n_i  # just N_P
-    # else:
-        # partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
-        # partB = (1 - np.exp(-c3 * n_i)) / c3
-        # n3_factor = partA + partB
+#     # if np.isclose(c3, 0.0, atol=1e-14):
+#     #     n3_factor = (N_P - n_i) + n_i  # just N_P
+#     # else:
+#         # partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+#         # partB = (1 - np.exp(-c3 * n_i)) / c3
+#         # n3_factor = partA + partB
     
-    return 2.0 * G * n3_factor
-import numpy as np
+#     return 2.0 * G * n3_factor
+# import numpy as np
 
-def S_AAP33(k1, k2, k3, bA, bB, bP, N_A, N_P, M, j1, j2, j3):
-    """
-    Compute the AAP33 integral as defined:
-    Sum of two n3-ranged integrals over n1,n2.
-    """
-    a1 = (bA**2 / 6.0) * k1**2
-    a2 = (bB**2 / 6.0) * k2**2
-    # c3 = (bP**2 / 6.0) * k3**2
+# def S_AAP33(k1, k2, k3, bA, bB, bP, N_A, N_P, M, j1, j2, j3):
+#     """
+#     Compute the AAP33 integral as defined:
+#     Sum of two n3-ranged integrals over n1,n2.
+#     """
+#     a1 = (bA**2 / 6.0) * k1**2
+#     a2 = (bB**2 / 6.0) * k2**2
+#     # c3 = (bP**2 / 6.0) * k3**2
     
-    # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+#     # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
     
-    def f(a, L):
-        if np.isclose(a, 0.0, atol=1e-14):
-            return L
-        return (1 - np.exp(-a * L)) / a
+#     def f(a, L):
+#         if np.isclose(a, 0.0, atol=1e-14):
+#             return L
+#         return (1 - np.exp(-a * L)) / a
     
-    n1n2_factor = f(a1, N_A) * f(a2, N_A)
+#     n1n2_factor = f(a1, N_A) * f(a2, N_A)
     
-    n3_factor = np.exp(
-        - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
-    )
-    # if np.isclose(c3, 0.0, atol=1e-14):
-    #     n3_factor = N_P
-    # else:
-    #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
-    #     partB = (1 - np.exp(-c3 * n_i)) / c3
-    #     n3_factor = partA + partB
+#     n3_factor = np.exp(
+#         - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
+#     )
+#     # if np.isclose(c3, 0.0, atol=1e-14):
+#     #     n3_factor = N_P
+#     # else:
+#     #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+#     #     partB = (1 - np.exp(-c3 * n_i)) / c3
+#     #     n3_factor = partA + partB
     
-    return n1n2_factor * n3_factor
+#     return n1n2_factor * n3_factor
 
-import numpy as np
+# import numpy as np
 
-def S_APA32(k1, k3, bA1, bA3, bP, N_A, N, M, j3, j1):
-    """
-    Compute the APA32 integral:
-    I = ∫_0^{N_A} dn1 ∫_0^{N_A} dn3 exp[-a1*n1 - B - a3*n3]
-    """
-    a1 = (bA1**2 / 6.0) * k1**2
-    a3 = (bA3**2 / 6.0) * k3**2
-    B  = (N / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
+# def S_APA32(k1, k3, bA1, bA3, bP, N_A, N, M, j3, j1):
+#     """
+#     Compute the APA32 integral:
+#     I = ∫_0^{N_A} dn1 ∫_0^{N_A} dn3 exp[-a1*n1 - B - a3*n3]
+#     """
+#     a1 = (bA1**2 / 6.0) * k1**2
+#     a3 = (bA3**2 / 6.0) * k3**2
+#     B  = (N / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
     
-    def f(a, L):
-        if np.isclose(a, 0.0, atol=1e-14):
-            return L
-        return (1 - np.exp(-a * L)) / a
+#     def f(a, L):
+#         if np.isclose(a, 0.0, atol=1e-14):
+#             return L
+#         return (1 - np.exp(-a * L)) / a
     
-    return np.exp(-B) * f(a1, N_A) * f(a3, N_A)
-def S_APA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
-    """
-    Compute the AAP33 integral as defined:
-    Sum of two n3-ranged integrals over n1,n2.
-    """
-    a1 = (bA**2 / 6.0) * k1**2
-    a2 = (bA**2 / 6.0) * k3**2
-    # c3 = (bP**2 / 6.0) * k3**2
+#     return np.exp(-B) * f(a1, N_A) * f(a3, N_A)
+# def S_APA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
+#     """
+#     Compute the AAP33 integral as defined:
+#     Sum of two n3-ranged integrals over n1,n2.
+#     """
+#     a1 = (bA**2 / 6.0) * k1**2
+#     a2 = (bA**2 / 6.0) * k3**2
+#     # c3 = (bP**2 / 6.0) * k3**2
     
-    # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+#     # B = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
     
-    def f(a, L):
-        if np.isclose(a, 0.0, atol=1e-14):
-            return L
-        return (1 - np.exp(-a * L)) / a
+#     def f(a, L):
+#         if np.isclose(a, 0.0, atol=1e-14):
+#             return L
+#         return (1 - np.exp(-a * L)) / a
     
-    n1n2_factor = f(a1, N_A) * f(a2, N_A)
+#     n1n2_factor = f(a1, N_A) * f(a2, N_A)
     
-    n3_factor = np.exp(
-        - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
-    )
-    # if np.isclose(c3, 0.0, atol=1e-14):
-    #     n3_factor = N_P
-    # else:
-    #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
-    #     partB = (1 - np.exp(-c3 * n_i)) / c3
-    #     n3_factor = partA + partB
+#     n3_factor = np.exp(
+#         - (N_P / (6.0*(M-1))) * bP**2 * (k1**2 * (j2 - j1) + k3**2 * (j3 - j2))
+#     )
+#     # if np.isclose(c3, 0.0, atol=1e-14):
+#     #     n3_factor = N_P
+#     # else:
+#     #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+#     #     partB = (1 - np.exp(-c3 * n_i)) / c3
+#     #     n3_factor = partA + partB
     
-    return n1n2_factor * n3_factor
+#     return n1n2_factor * n3_factor
 
 
-def S_APP31(k3, bA, N_A):
-    """
-    compute
-    I = \int_0^{N_A} dn3 exp[- (1/6) bA^2 k3^2 * n3]
-    """
-    a3 = (bA**2 / 6.0) * k3**2
+# def S_APP31(k3, bA, N_A):
+#     """
+#     compute
+#     I = \int_0^{N_A} dn3 exp[- (1/6) bA^2 k3^2 * n3]
+#     """
+#     a3 = (bA**2 / 6.0) * k3**2
     
-    if np.isclose(a3, 0.0, atol=1e-14):
-        return N_A
-    return (1 - np.exp(-a3 * N_A)) / a3
+#     if np.isclose(a3, 0.0, atol=1e-14):
+#         return N_A
+#     return (1 - np.exp(-a3 * N_A)) / a3
 
-import numpy as np
+# import numpy as np
 
-def S_APP32(k1, k3, bA, bP, N_A, N_P, M, j3, j1):
-    """    
-    I = ∫_0^{N_A} dn1 ∫_{n_i}^{N_P} dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n3 - n_i)]
-      + ∫_0^{N_A} dn1 ∫_0^{n_i}  dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n_i - n3)]
-    """
-    a1 = (bA**2 / 6.0) * k1**2
-    a3 = (bP**2 / 6.0) * k3**2
-    B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
+# def S_APP32(k1, k3, bA, bP, N_A, N_P, M, j3, j1):
+#     """    
+#     I = ∫_0^{N_A} dn1 ∫_{n_i}^{N_P} dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n3 - n_i)]
+#       + ∫_0^{N_A} dn1 ∫_0^{n_i}  dn3 exp[-(1/6)bA^2 k1^2 n1 - (1/6)bP^2 k3^2 (n_i - n3)]
+#     """
+#     a1 = (bA**2 / 6.0) * k1**2
+#     a3 = (bP**2 / 6.0) * k3**2
+#     B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j1)
 
-    # n1 integral
-    if np.isclose(a1, 0.0, atol=1e-14):
-        F1 = N_A
-    else:
-        F1 = (1 - np.exp(-a1 * N_A)) / a1
+#     # n1 integral
+#     if np.isclose(a1, 0.0, atol=1e-14):
+#         F1 = N_A
+#     else:
+#         F1 = (1 - np.exp(-a1 * N_A)) / a1
 
-    # n3 integrals
-    # if np.isclose(a3, 0.0, atol=1e-14):
-    #     G = (N_P - n_i) + n_i  # just N_P
-    # else:
-    #     G1 = (1 - np.exp(-a3 * (N_P - n_i))) / a3
-    #     G2 = (1 - np.exp(-a3 * n_i)) / a3
-    #     G = G1 + G2
+#     # n3 integrals
+#     # if np.isclose(a3, 0.0, atol=1e-14):
+#     #     G = (N_P - n_i) + n_i  # just N_P
+#     # else:
+#     #     G1 = (1 - np.exp(-a3 * (N_P - n_i))) / a3
+#     #     G2 = (1 - np.exp(-a3 * n_i)) / a3
+#     #     G = G1 + G2
 
-    return F1 * np.exp(-B)#G
+#     return F1 * np.exp(-B)#G
 
-def S_APP33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
-    a1 = (bA**2 / 6.0) * k1**2
-    B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j2)
-    C  = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
+# def S_APP33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
+#     a1 = (bA**2 / 6.0) * k1**2
+#     B  = (N_P / (6.0 * (M - 1))) * bP**2 * k3**2 * (j3 - j2)
+#     C  = (N_P / (6.0 * (M - 1))) * bP**2 * k1**2 * (j2 - j1)
 
-    # n1 integral
-    if np.isclose(a1, 0.0, atol=1e-14):
-        F1 = N_A
-    else:
-        F1 = (1 - np.exp(-a1 * N_A)) / a1
-
-
-    return F1 * np.exp(-B)  * np.exp(-C)#G
+#     # n1 integral
+#     if np.isclose(a1, 0.0, atol=1e-14):
+#         F1 = N_A
+#     else:
+#         F1 = (1 - np.exp(-a1 * N_A)) / a1
 
 
-def calc_sf3(psol, corrs, k1, k2, k12):
-    """
-    Compute third-order structure factors for a single (k1,k2,k12).
-    Returns S3_arr with axes [species1, species2, species3] where
-      0 -> P, 1 -> A, 2 -> B
-    """
-    v_P = psol.v_p
-    N_P = psol.N_P
-    b_P = psol.b_P
-    v_A = psol.v_A
-    N_A = psol.N_A
-    b_A = psol.b_A
-    v_B = psol.v_B
-    N_B = psol.N_B
-    b_B = psol.b_B
-    M = psol.M
-    solv_cons = psol.solv_cons
-    phi_p = psol.phi_p
-    phi_A = psol.phi_A
-    phi_B = psol.phi_B
+#     return F1 * np.exp(-B)  * np.exp(-C)#G
 
-    phi_Ab = psol.phi_Ab
-    phi_Au = psol.phi_Au
-    phi_Bb = psol.phi_Bb
-    phi_Bu = psol.phi_Bu
 
-    sA, sB = corrs
-    # correlations
-    sP = np.ones_like(sA)
-    sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)
-    sAsAsP = np.einsum("i,j,k->ijk", sA, sA, sP)
-    sAsPsP = np.einsum("i,j,k->ijk", sA, sP, sP)
-    sAsBsP = np.einsum("i,j,k->ijk", sA, sB, sP)
+# def calc_sf3(psol, corrs, phius, k1, k2, k12):
+#     """
+#     Compute third-order structure factors for a single (k1,k2,k12).
+#     Returns S3_arr with axes [species1, species2, species3] where
+#       0 -> P, 1 -> A, 2 -> B
+#     """
+#     v_P = psol.v_p
+#     N_P = psol.N_P
+#     b_P = psol.b_P
+#     v_A = psol.v_A
+#     N_A = psol.N_A
+#     b_A = psol.b_A
+#     v_B = psol.v_B
+#     N_B = psol.N_B
+#     b_B = psol.b_B
+#     M = psol.M
+#     solv_cons = psol.solv_cons
+#     phi_Au, phi_Bu = phius
+#     phi_p = psol.phi_p
+#     # phi_A = psol.phi_A
+#     # phi_B = psol.phi_B
 
-    sBsBsB = np.einsum("i,j,k->ijk", sB, sB, sB)
-    sBsBsP = np.einsum("i,j,k->ijk", sB, sB, sP)
-    sBsPsP = np.einsum("i,j,k->ijk", sB, sP, sP)
+#     # phi_Ab = psol.phi_Ab
+#     # phi_Au = psol.phi_Au
+#     # phi_Bb = psol.phi_Bb
+#     # phi_Bu = psol.phi_Bu
 
-    sAsAsB = np.einsum("i,j,k->ijk", sA, sA, sB)
-    sAsBsB = np.einsum("i,j,k->ijk", sA, sB, sB)
+#     sA, sB = corrs
+#     # correlations
+#     sP = np.ones_like(sA)
+#     sAsAsA = np.einsum("i,j,k->ijk", sA, sA, sA)
+#     sAsAsP = np.einsum("i,j,k->ijk", sA, sA, sP)
+#     sAsPsP = np.einsum("i,j,k->ijk", sA, sP, sP)
+#     sAsBsP = np.einsum("i,j,k->ijk", sA, sB, sP)
 
-    # monomer index grid
-    j1, j2, j3 = np.indices((M, M, M))
+#     sBsBsB = np.einsum("i,j,k->ijk", sB, sB, sB)
+#     sBsBsP = np.einsum("i,j,k->ijk", sB, sB, sP)
+#     sBsPsP = np.einsum("i,j,k->ijk", sB, sP, sP)
 
-    # case permutations
-    case1     = [[k12, k1],  [j3, j2, j1]]
-    case1_deg = [[k1,  k12], [j1, j2, j3]]
-    case2     = [[k2,  k12], [j2, j1, j3]]
-    case2_deg = [[k12, k2],  [j3, j1, j2]]
-    case3     = [[-k2, k1],  [j2, j3, j1]]
-    case3_deg = [[k1, -k2],  [j1, j3, j2]]
-    case_arr  = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
+#     sAsAsB = np.einsum("i,j,k->ijk", sA, sA, sB)
+#     sAsBsB = np.einsum("i,j,k->ijk", sA, sB, sB)
 
-    S3_arr = np.zeros((3, 3, 3), dtype=float)
+#     # monomer index grid
+#     j1, j2, j3 = np.indices((M, M, M))
 
-    # helper for masked sums
-    def masked_sum(corr, I, mask):
-        m = (mask != 0)
-        if not np.any(m):
-            return 0.0
-        return np.sum(corr[m] * I[m])
+#     # case permutations
+#     case1     = [[k12, k1],  [j3, j2, j1]]
+#     case1_deg = [[k1,  k12], [j1, j2, j3]]
+#     case2     = [[k2,  k12], [j2, j1, j3]]
+#     case2_deg = [[k12, k2],  [j3, j1, j2]]
+#     case3     = [[-k2, k1],  [j2, j3, j1]]
+#     case3_deg = [[k1, -k2],  [j1, j3, j2]]
+#     case_arr  = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
 
-    # loop over cases and accumulate into S3_arr
-    for cse in case_arr:
-        kA, kB = cse[0]
-        ordered_js = cse[1]
+#     #prefactors. assuming N_A = N_B
 
-        # masks
-        index1 = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
-        index2 = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
+#     #ppp: np N_p^3 / V_sys = N_P^2 phi_P
+#     ppp_pre = N_P**2 * phi_p
+#     #ppa: np N_p^2 N_A / V_sys = N_P N_A phi_P
+#     ppa_pre = N_P * N_A * phi_p
+#     #paa: np N_p N_A^2 / V_sys = N_A^2 phi_P
+#     paa_pre = N_A**2 * phi_p
+#     # BOUND aaa: np N_A^3 / V_sys = np N_A^3 N_P / (v_sys N_P) = N_A^3 phi_P / N_P
+#     aaa_pre = (N_A**3 * phi_p) / N_P
 
-        # PPP  -> [0,0,0]
-        S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
+#     # UNBOUND
+#     aaaU_pre = phi_Au * N_A**3
+#     bbbU_pre = phi_Bu * N_B**3
 
-        # AAA -> [1,1,1]
-        S3_arr[1,1,1] += np.sum(sA * S_AAA31(kA, kB, b_A, N_A))
-        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr1 = sAsAsA / sA[ordered_js[0]]   # careful: ordered_js[0] indexes into sA
-        S3_arr[1,1,1] += masked_sum(corr1, I, index1)
-        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        corr2 = sAsAsA
-        S3_arr[1,1,1] += masked_sum(corr2, I, index2)
+#     S3_arr = np.zeros((4, 4, 4), dtype=float)
+#     S3_Au = 0
+#     S3_Bu = 0
 
-        # AAB -> [1,1,2]
-        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsAsB / sA[ordered_js[0]]
-        S3_arr[1,1,2] += masked_sum(corr, I, index1)
-        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,1,2] += masked_sum(sAsAsB, I, index2)
+#     # helper for masked sums
+#     def masked_sum(corr, I, mask):
+#         m = (mask != 0)
+#         if not np.any(m):
+#             return 0.0
+#         return np.sum(corr[m] * I[m])
 
-        # ABB -> [1,2,2]
-        I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsBsB / sB[ordered_js[2]]
-        S3_arr[1,2,2] += masked_sum(corr, I, index1)
-        I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,2,2] += masked_sum(sAsBsB, I, index2)
+#     # loop over cases and accumulate into S3_arr
+#     for cse in case_arr:
+#         kA, kB = cse[0]
+#         ordered_js = cse[1]
 
-        # AAP -> [1,1,0]
-        S3_arr[1,1,0] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
-        I = S_AAP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsAsP / sA[ordered_js[0]]
-        S3_arr[1,1,0] += masked_sum(corr, I, index1)
-        I = S_AAP33(kA, kB, -kA-kB, b_A, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,1,0] += masked_sum(sAsAsP, I, index2)
+#         # masks
+#         index1 = (ordered_js[0] == ordered_js[1]) * (ordered_js[0] > ordered_js[-1])
+#         index2 = (ordered_js[2] > ordered_js[1]) * (ordered_js[1] > ordered_js[0])
 
-        # APA -> [1,0,1]
-        S3_arr[1,0,1] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
-        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsAsP
-        S3_arr[1,0,1] += masked_sum(corr, I, index1)
-        # handling As on different monomers
-        S3_arr[1,1,0] += masked_sum(corr, I, index1)
-        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,0,1] += masked_sum(sAsAsP, I, index2)
+#         # PPP  -> [0,0,0]
+#         S3_arr[0,0,0] += np.sum(S_AAA31(kA, kB, b_P, N_P))
+#         S3_arr[0,0,0] *= ppp_pre
+#         S3_Au += np.sum(S_AAA31(kA, kB, b_A, N_A))
+#         S3_Au *= aaaU_pre
+#         S3_Bu *= bbbU_pre
+#         # S3_arr
+#         # AAA -> [1,1,1]
+#         S3_arr[1,1,1] += np.sum(sA * S_AAA31(kA, kB, b_A, N_A))
+#         I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr1 = sAsAsA / sA[ordered_js[0]]   # careful: ordered_js[0] indexes into sA
+#         S3_arr[1,1,1] += masked_sum(corr1, I, index1)
+#         I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         corr2 = sAsAsA
+#         S3_arr[1,1,1] += masked_sum(corr2, I, index2)
+#         S3_arr[1,1,1] *= aaa_pre
 
-        # BBB -> [2,2,2]
-        S3_arr[2,2,2] += np.sum(sB * S_AAA31(kA, kB, b_B, N_B))
-        I = S_AAA32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sBsBsB / sB[ordered_js[0]]
-        S3_arr[2,2,2] += masked_sum(corr, I, index1)
-        I = S_AAA33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[2,2,2] += masked_sum(sBsBsB, I, index2)
+#         # AAB -> [1,1,2]
+#         I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsAsB / sA[ordered_js[0]]
+#         S3_arr[1,1,2] += masked_sum(corr, I, index1)
+#         I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,1,2] += masked_sum(sAsAsB, I, index2)
+#         S3_arr[1,1,2] *= aaa_pre
 
-        # BBP -> [2,2,0]
-        S3_arr[2,2,0] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
-        I = S_AAP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sBsBsP / sB[ordered_js[0]]
-        S3_arr[2,2,0] += masked_sum(corr, I, index1)
-        I = S_AAP33(kA, kB, -kA-kB, b_B, b_B, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[2,2,0] += masked_sum(sBsBsP, I, index2)
+#         # ABB -> [1,2,2]
+#         I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsBsB / sB[ordered_js[2]]
+#         S3_arr[1,2,2] += masked_sum(corr, I, index1)
+#         I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,2,2] += masked_sum(sAsBsB, I, index2)
+#         S3_arr[1,2,2] *= aaa_pre
 
-        # BPB -> [2,0,2]
-        S3_arr[2,0,2] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
-        I = S_APA32(kA, kB, b_B, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sBsBsP
-        S3_arr[2,0,2] += masked_sum(corr, I, index1)
-        # also add to BBP
-        S3_arr[2,2,0] += masked_sum(corr, I, index1)
-        I = S_APA33(kA, kB, -kA-kB, b_B, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[2,0,2] += masked_sum(sBsBsP, I, index2)
+#         # AAP -> [1,1,0]
+#         S3_arr[1,1,0] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+#         I = S_AAP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsAsP / sA[ordered_js[0]]
+#         S3_arr[1,1,0] += masked_sum(corr, I, index1)
+#         I = S_AAP33(kA, kB, -kA-kB, b_A, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,1,0] += masked_sum(sAsAsP, I, index2)
+#         S3_arr[1,1,0] *= paa_pre
 
-        # ABP -> [1,2,0]
-        I = S_APA32(kA, kB, b_A, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsBsP
-        S3_arr[1,2,0] += masked_sum(corr, I, index1)
-        I = S_AAP33(kA, kB, -kA-kB, b_A, b_B, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,2,0] += masked_sum(sAsBsP, I, index2)
+#         # APA -> [1,0,1]
+#         S3_arr[1,0,1] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
+#         I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsAsP
+#         S3_arr[1,0,1] += masked_sum(corr, I, index1)
+#         # handling As on different monomers
+#         S3_arr[1,1,0] += masked_sum(corr, I, index1)
+#         I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,0,1] += masked_sum(sAsAsP, I, index2)
+#         S3_arr[1,0,1] *= paa_pre
 
-        # BPA -> [2,0,1]
-        I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        corr = sAsBsP
-        S3_arr[2,0,1] += masked_sum(corr, I, index1)
-        I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[2,0,1] += masked_sum(sAsBsP, I, index2)
+#         # BBB -> [2,2,2]
+#         S3_arr[2,2,2] += np.sum(sB * S_AAA31(kA, kB, b_B, N_B))
+#         I = S_AAA32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sBsBsB / sB[ordered_js[0]]
+#         S3_arr[2,2,2] += masked_sum(corr, I, index1)
+#         I = S_AAA33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[2,2,2] += masked_sum(sBsBsB, I, index2)
+#         S3_arr[2,2,2] *= aaa_pre
 
-        # APP -> [1,0,0] (only depends on single-k part; averaged over cases in original)
-        S3_arr[1,0,0] += np.sum(sA * S_APP31(kA, b_A, N_A)) / len(case_arr)
-        I = S_APP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
-        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index1)
-        I = S_APP33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[1,0,0] += masked_sum(sAsPsP, I, index2)
+#         # BBP -> [2,2,0]
+#         S3_arr[2,2,0] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+#         I = S_AAP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sBsBsP / sB[ordered_js[0]]
+#         S3_arr[2,2,0] += masked_sum(corr, I, index1)
+#         I = S_AAP33(kA, kB, -kA-kB, b_B, b_B, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[2,2,0] += masked_sum(sBsBsP, I, index2)
+#         S3_arr[2,2,0] *= paa_pre
 
-        # BPP -> [2,0,0]
-        S3_arr[2,0,0] += np.sum(sB * S_APP31(kA, b_B, N_B)) / len(case_arr)
-        I = S_APP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
-        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index1)
-        I = S_APP33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
-                    ordered_js[0], ordered_js[1], ordered_js[2])
-        S3_arr[2,0,0] += masked_sum(sBsPsP, I, index2)
+#         # BPB -> [2,0,2]
+#         S3_arr[2,0,2] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
+#         I = S_APA32(kA, kB, b_B, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sBsBsP
+#         S3_arr[2,0,2] += masked_sum(corr, I, index1)
+#         # also add to BBP
+#         S3_arr[2,2,0] += masked_sum(corr, I, index1)
+#         I = S_APA33(kA, kB, -kA-kB, b_B, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[2,0,2] += masked_sum(sBsBsP, I, index2)
+#         S3_arr[2,0,2] *= paa_pre
 
-    # PAA = AAP
-    S3_arr[0,1,1] = S3_arr[1,1,0]
+#         # ABP -> [1,2,0]
+#         I = S_APA32(kA, kB, b_A, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsBsP
+#         S3_arr[1,2,0] += masked_sum(corr, I, index1)
+#         I = S_AAP33(kA, kB, -kA-kB, b_A, b_B, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,2,0] += masked_sum(sAsBsP, I, index2)
+#         S3_arr[1,2,0] *= paa_pre
 
-    # PBB = BBP
-    S3_arr[0,2,2] = S3_arr[2,2,0]
+#         # BPA -> [2,0,1]
+#         I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         corr = sAsBsP
+#         S3_arr[2,0,1] += masked_sum(corr, I, index1)
+#         I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[2,0,1] += masked_sum(sAsBsP, I, index2)
+#         S3_arr[2,0,1] *= paa_pre
 
-    # BAP = PAB = PBA = ABP
-    # BAP [2,1,0], PAB [0,1,2], PBA [0,2,1], ABP [1,2,0]
-    S3_arr[2,1,0] = S3_arr[0,1,2] = S3_arr[0,2,1] = S3_arr[1,2,0]
+#         # APP -> [1,0,0] (only depends on single-k part; averaged over cases in original)
+#         S3_arr[1,0,0] += np.sum(sA * S_APP31(kA, b_A, N_A)) / len(case_arr)
+#         I = S_APP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+#         S3_arr[1,0,0] += masked_sum(sAsPsP, I, index1)
+#         I = S_APP33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[1,0,0] += masked_sum(sAsPsP, I, index2)
+#         S3_arr[1,0,0] *= ppa_pre
 
-    # APB = BPA
-    # APB [1,0,2], BPA [2,0,1]
-    S3_arr[1,0,2] = S3_arr[2,0,1]
+#         # BPP -> [2,0,0]
+#         S3_arr[2,0,0] += np.sum(sB * S_APP31(kA, b_B, N_B)) / len(case_arr)
+#         I = S_APP32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
+#         S3_arr[2,0,0] += masked_sum(sBsPsP, I, index1)
+#         I = S_APP33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
+#                     ordered_js[0], ordered_js[1], ordered_js[2])
+#         S3_arr[2,0,0] += masked_sum(sBsPsP, I, index2)
+#         S3_arr[2,0,0] *= ppa_pre
 
-    # PPA = PAP = APP
-    # PPA [0,0,1], PAP [0,1,0], APP [1,0,0]
-    S3_arr[0,0,1] = S3_arr[0,1,0] = S3_arr[1,0,0]
+#     # PAA = AAP
+#     S3_arr[0,1,1] = S3_arr[1,1,0]
 
-    # PPB = PBP = BPP
-    # PPB [0,0,2], PBP [0,2,0], BPP [2,0,0]
-    S3_arr[0,0,2] = S3_arr[0,2,0] = S3_arr[2,0,0]
+#     # PBB = BBP
+#     S3_arr[0,2,2] = S3_arr[2,2,0]
 
-    # ABA = BAA = AAB
-    # ABA [1,2,1], BAA [2,1,1], AAB [1,1,2]
-    S3_arr[1,2,1] = S3_arr[2,1,1] = S3_arr[1,1,2]
+#     # BAP = PAB = PBA = ABP
+#     # BAP [2,1,0], PAB [0,1,2], PBA [0,2,1], ABP [1,2,0]
+#     S3_arr[2,1,0] = S3_arr[0,1,2] = S3_arr[0,2,1] = S3_arr[1,2,0]
 
-    # BAB = BBA = ABB
-    # BAB [2,1,2], BBA [2,2,1], ABB [1,2,2]
-    S3_arr[2,1,2] = S3_arr[2,2,1] = S3_arr[1,2,2]
+#     # APB = BPA
+#     # APB [1,0,2], BPA [2,0,1]
+#     S3_arr[1,0,2] = S3_arr[2,0,1]
 
-    return S3_arr
+#     # PPA = PAP = APP
+#     # PPA [0,0,1], PAP [0,1,0], APP [1,0,0]
+#     S3_arr[0,0,1] = S3_arr[0,1,0] = S3_arr[1,0,0]
+
+#     # PPB = PBP = BPP
+#     # PPB [0,0,2], PBP [0,2,0], BPP [2,0,0]
+#     S3_arr[0,0,2] = S3_arr[0,2,0] = S3_arr[2,0,0]
+
+#     # ABA = BAA = AAB
+#     # ABA [1,2,1], BAA [2,1,1], AAB [1,1,2]
+#     S3_arr[1,2,1] = S3_arr[2,1,1] = S3_arr[1,1,2]
+
+#     # BAB = BBA = ABB
+#     # BAB [2,1,2], BBA [2,2,1], ABB [1,2,2]
+#     S3_arr[2,1,2] = S3_arr[2,2,1] = S3_arr[1,2,2]
+
+#     # ADD UNBOUND CONTRIBUTION
+#     S3_arr[1,1,1] += S3_Au
+#     S3_arr[2,2,2] += S3_Bu
+
+#     S3_arr[3,3,3] += solv_cons
+#     return S3_arr
+
+
+
+# def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
+#     # [n_bind, v_int, Vol_int, e_m, rho_c, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
+#     v_P = psol.v_p
+#     N_P = psol.N_P
+#     b_P = psol.b_P
+#     v_A = psol.v_A
+#     N_A = psol.N_A
+#     b_A = psol.b_A
+#     v_B = psol.v_B
+#     N_B = psol.N_B
+#     b_B = psol.b_B
+#     M = psol.M
+#     solv_cons = psol.solv_cons
+#     phi_Au, phi_Bu = phius
+#     phi_p = psol.phi_p
+#     # phi_A = psol.phi_A
+#     # phi_B = psol.phi_B
+
+#     # phi_Ab = psol.phi_Ab
+#     # phi_Au = psol.phi_Au
+#     # phi_Bb = psol.phi_Bb
+#     # phi_Bu = psol.phi_Bu
+
+#     sA, sB = corrs
+#     sP = np.ones_like(sA)
+#     sAsA = np.outer(sA, sA)
+#     sBsB = np.outer(sB, sB)
+#     sAsB = np.outer(sA, sB)
+
+#     sAsAsAsA = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sA)
+#     sAsAsAsP = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sP)
+#     sAsAsPsP = np.einsum("i,j,k,l->ijkl", sA, sA, sP, sP)
+#     sAsPsPsP = np.einsum("i,j,k,l->ijkl", sA, sP, sP, sP)
+
+#     sAsAsAsB = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sB)
+#     sAsAsBsB = np.einsum("i,j,k,l->ijkl", sA, sA, sB, sB)
+#     sAsBsBsB = np.einsum("i,j,k,l->ijkl", sA, sB, sB, sB)
+#     sBsBsBsB = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sB)
+
+#     sAsAsAsP = np.einsum("i,j,k,l->ijkl", sA, sA, sA, sP)
+#     sAsAsPsP = np.einsum("i,j,k,l->ijkl", sA, sA, sP, sP)
+#     sAsPsPsP = np.einsum("i,j,k,l->ijkl", sA, sP, sP, sP)
+
+#     sAsAsBsP = np.einsum("i,j,k,l->ijkl", sA, sA, sB, sP)
+#     sAsBsBsP = np.einsum("i,j,k,l->ijkl", sA, sB, sB, sP)
+#     sBsBsBsP = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sP)
+#     sAsBsPsP = np.einsum("i,j,k,l->ijkl", sA, sB, sP, sP)
+
+#     sBsBsBsP = np.einsum("i,j,k,l->ijkl", sB, sB, sB, sP)
+#     sBsBsPsP = np.einsum("i,j,k,l->ijkl", sB, sB, sP, sP)
+#     sBsPsPsP = np.einsum("i,j,k,l->ijkl", sB, sP, sP, sP)
+
+
+#     grid = np.indices((M,M,M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+#     j3 = grid[2]
+#     j4 = grid[3]
+
+#     # k2 = k_vec_2[i]
+#     # k3 = k_vec_3[i]
+#     k12 = k1 + k2
+#     k13 = k1 + k3
+#     k23 = k2 + k3
+#     # k123 = k1 + k2 + k3
+    
+#     # CASE 1; kA = k1 + k2 + k3; kB = k_1 + k_2; kC = k_1  S4 > S3 > S2 > S1 (and reverse). All cases on wlcstat
+#     case1 = [[k123, k12, k1], [j4, j3, j2, j1]]
+#     case2 = [[k123, k12, k2], [j4, j3, j1, j2]]
+#     case3 = [[k123, k13, k1], [j4, j2, j3, j1]]
+#     case4 = [[k123, k23, k2], [j4, j1, j3, j2]]
+#     case5 = [[k123, k13, k3], [j4, j2, j1, j3]]
+#     case6 = [[k123, k23, k3], [j4, j1, j2, j3]]
+#     case7 = [[-k3, k12, k1], [j3, j4, j2, j1]]
+#     case8 = [[-k3, k12, k2], [j3, j4, j1, j2]]
+#     case9 = [[-k2, k13, k1], [j2, j4, j3, j1]]
+#     case10 = [[-k1, k23, k2], [j1, j4, j3, j2]]
+#     case11 = [[-k2, k13, k3], [j2, j4, j1, j3]]
+#     case12 = [[-k1, k23, k3], [j1, j4, j2, j3]]
+    
+#     case1_deg = [[k1, k12, k123], [j1, j2, j3, j4]]
+#     case2_deg = [[k2, k12, k123], [j2, j1, j3, j4]]
+#     case3_deg = [[k1, k13, k123], [j1, j3, j2, j4]]
+#     case4_deg = [[k2, k23, k123], [j2, j3, j1, j4]]
+#     case5_deg = [[k3, k13, k123], [j3, j1, j2, j4]]
+#     case6_deg = [[k3, k23, k123], [j3, j2, j1, j4]]
+#     case7_deg = [[k1, k12, -k3], [j1, j2, j4, j3]]
+#     case8_deg = [[k2, k12, -k3], [j2, j1, j4, j3]]
+#     case9_deg = [[k1, k13, -k2], [j1, j3, j4, j2]]
+#     case10_deg = [[k2, k23, -k1], [j2, j3, j4, j1]]
+#     case11_deg = [[k3, k13, -k2], [j3, j1, j4, j2]]
+#     case12_deg = [[k3, k23, -k1], [j3, j2, j4, j1]]
+
+
+
+#     case_arr = [case1, case2, case3, case4, case5, case6, \
+#                 case7, case8, case9, case10, case11, case12, \
+#                 case1_deg, case2_deg, case3_deg, case4_deg, case5_deg, case6_deg, \
+#                 case7_deg, case8_deg, case9_deg, case10_deg, case11_deg, case12_deg]
+    
+
+#     #prefactors. assuming N_A = N_B
+
+#     #pppp: np N_p^4 / V_sys = N_P^3 phi_P
+#     pppp_pre = N_P**3 * phi_p
+#     #pppa: np N_p^3 N_A / V_sys = N_P^2 N_A phi_P
+#     pppa_pre = N_P**2 * N_A * phi_p
+#     #ppaa: np N_p^2 N_A^2 / V_sys = N_A^2 N_P phi_P
+#     ppaa_pre = N_P * N_A**2 * phi_p
+#     #paaa: np N_p N_A^3 / V_sys = N_A^3 phi_P
+#     paaa_pre = N_A**3 * phi_p
+
+#     # BOUND aaaa: np N_A^4 / V_sys = np N_A^4 N_P / (v_sys N_P) = N_A^4 phi_P / N_P
+#     aaaa_pre = (N_A**4 * phi_p) / N_P
+
+#     # UNBOUND
+#     aaaaU_pre = phi_Au * N_A**4
+#     bbbbU_pre = phi_Bu * N_B**4
+
+#     S4_arr = np.zeros((4,4,4,4)) 
+#     S4_Au = 0
+#     S4_Bu = 0
+
+
+#     for cse in case_arr:
+#         kA, kB, kC = cse[0]
+#         ordered_js = cse[1]
+        
+
+#     #     xm_A = (1/6) * N_m * b**2 * np.linalg.norm(kA)**2
+#     #     xm_B = (1/6) * N_m * b**2 * np.linalg.norm(kB)**2
+#     #     xm_C = (1/6) * N_m * b**2 * np.linalg.norm(kC)**2
+#     #     # print("-----------------")
+#     #     # print("ks: ", kA, kB, kC)
+
+#     #     C = calc_case_s4(C, xm_A, xm_B, xm_C, ordered_js)
+        
+#     # solvent_index = sig_inds[-1] + 1 # solvent index is always the last one
+
+#     # for a1, a2, a3, a4 in product(sig_inds+[solvent_index], repeat=4):
+#     #     if (a1 == a2 == a3 == a4 == solvent_index): #at S^{(4)}_{SSSS}
+#     #         S4_arr[a1][a2][a3][a4] += alpha
+#     #     elif (a1 == solvent_index or a2 == solvent_index or a3 == solvent_index or a4 == solvent_index): #at S^{(4)}_{Sxxx}
+#     #         S4_arr[a1][a2][a3][a4] += 0
+#     #     else:
+#     #         S4_arr[a1][a2][a3][a4] += np.sum((1/M**4) * M4_arr[a1][a2][a3][a4] * C)*(N**4) 
+
+#     return S4_arr
