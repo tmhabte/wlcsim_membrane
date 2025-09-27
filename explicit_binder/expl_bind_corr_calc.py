@@ -780,6 +780,8 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[2,2,2,2] += np.sum(sB*S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
 
         S4_arr[0,0,0,0] += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_P, N_P))
+        S4_Au += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_A, N_A))
+        S4_Bu += np.sum(S_AAAA41(kA, kB,kC, -kA-kB-kC, b_B, N_B))
 
 
         index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] == ordered_js[2]) * (ordered_js[2] < ordered_js[3])
@@ -868,12 +870,21 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
         corr = sBsBsBsP / (sB[ordered_js[1]] * sB[ordered_js[2]])
         S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP / (sA[ordered_js[1]])
+        S4_arr[1,1,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP / (sB[ordered_js[1]])
+        S4_arr[1,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+
 
         I = S_AAPA42_AAPtriple_Aisolated(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[3])
         corr = sAsAsAsP / (sA[ordered_js[1]] * sA[ordered_js[2]])
         S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
         corr = sBsBsBsP / (sB[ordered_js[1]] * sB[ordered_js[2]])
         S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP / (sA[ordered_js[1]])
+        S4_arr[1,1,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP / (sB[ordered_js[1]])
+        S4_arr[1,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
 
         index = (ordered_js[0] == ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
         I = S_AAPA43(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[2], ordered_js[3])
@@ -881,6 +892,14 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
         corr = sBsBsBsP / (sB[ordered_js[1]])
         S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP
+        S4_arr[1,1,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP 
+        S4_arr[1,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP
+        S4_arr[1,0,2,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP
+        S4_arr[2,0,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
 
         index = (ordered_js[0] < ordered_js[1]) * (ordered_js[1] < ordered_js[2]) * (ordered_js[2] < ordered_js[3])
         I = S_AAAP44(kA, kB, kC, -kA-kB-kC, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[1], ordered_js[2], ordered_js[3])
@@ -888,7 +907,14 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[1,1,0,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
         corr = sBsBsBsP
         S4_arr[2,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
-
+        corr = sAsAsBsP
+        S4_arr[1,1,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP 
+        S4_arr[1,2,0,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsAsBsP
+        S4_arr[1,0,2,1] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
+        corr = sAsBsBsP
+        S4_arr[2,0,1,2] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
         # #AAPP → (1,1,0,0)
         # #BBPP → (2,2,0,0)
 
@@ -1033,6 +1059,9 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
         S4_arr[0,2,0,0] += np.sum(corr[np.where(index != 0)]*I[np.where(index != 0)])
 
     S4_arr[0,0,0,0] *= pppp_pre
+    S4_Au *= aaaaU_pre
+    S4_Bu *= bbbbU_pre
+
     S4_arr[1,1,1,1] *= aaaa_pre
     S4_arr[2,2,2,2] *= aaaa_pre
     S4_arr[1,1,1,2] *= aaaa_pre
@@ -1045,7 +1074,13 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
     S4_arr[1,1,2,0] *= paaa_pre
     S4_arr[2,2,1,0] *= paaa_pre
     S4_arr[1,1,0,1] *= paaa_pre
-    S4_arr[2,2,0,2] *= paaa_pre #6
+    S4_arr[2,2,0,2] *= paaa_pre #6 T13
+    S4_arr[2,0,1,2] *= paaa_pre
+    S4_arr[1,0,2,1] *= paaa_pre
+    S4_arr[1,1,0,2] *= paaa_pre
+    S4_arr[1,2,0,2] *= paaa_pre
+
+
 
     S4_arr[1,1,0,0] *= ppaa_pre
     S4_arr[2,2,0,0] *= ppaa_pre
@@ -1055,48 +1090,55 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
     S4_arr[1,0,0,2] *= ppaa_pre
     S4_arr[0,1,1,0] *= ppaa_pre
     S4_arr[0,2,2,0] *= ppaa_pre
-    S4_arr[0,1,2,0] *= ppaa_pre #9
+    S4_arr[0,1,2,0] *= ppaa_pre #9 T22
 
     S4_arr[1,0,0,0] *= pppa_pre
     S4_arr[2,0,0,0] *= pppa_pre
     S4_arr[0,1,0,0] *= pppa_pre
-    S4_arr[0,2,0,0] *= pppa_pre #4
+    S4_arr[0,2,0,0] *= pppa_pre #4 T26
 
 
     S4_arr[2,1,1,1] = S4_arr[1,2,1,1] = S4_arr[1,1,2,1] = S4_arr[1,1,1,2]
     S4_arr[2,2,2,1] = S4_arr[2,2,1,2] = S4_arr[2,1,2,2] = S4_arr[1,2,2,2]
     S4_arr[2,2,1,1] = S4_arr[1,2,2,1] = S4_arr[2,1,1,2] = S4_arr[1,1,2,2]
-    S4_arr[2,1,2,1] = S4_arr[1,2,1,2] #10
+    S4_arr[2,1,2,1] = S4_arr[1,2,1,2] #10 T36
 
 
 
     S4_arr[0,1,1,1] = S4_arr[1,1,1,0]
-    S4_arr[0,2,2,2] = S4_arr[2,2,2,0] #2
+    S4_arr[0,2,2,2] = S4_arr[2,2,2,0] #2 T38
 
     S4_arr[1,2,1,0] = S4_arr[0,1,2,1] = S4_arr[2,1,1,0] = S4_arr[0,2,1,1] \
         = S4_arr[0,1,1,2] = S4_arr[1,1,2,0]
     S4_arr[2,1,2,0] = S4_arr[0,2,1,2] = S4_arr[1,2,2,0] = S4_arr[0,1,2,2] \
-        = S4_arr[0,2,2,1] = S4_arr[2,2,1,0] #10
+        = S4_arr[0,2,2,1] = S4_arr[2,2,1,0] #10 T48
     
 
     S4_arr[1,0,1,1] = S4_arr[1,1,0,1]
-    S4_arr[2,0,2,2] = S4_arr[2,2,0,2] #2
+    S4_arr[2,0,2,2] = S4_arr[2,2,0,2] 
+    S4_arr[1,0,1,2] = S4_arr[2,0,1,1] = S4_arr[2,1,0,1] = S4_arr[1,1,0,2]
+    S4_arr[2,2,0,1] = S4_arr[2,0,2,1] = S4_arr[1,0,2,2] = S4_arr[1,2,0,2] 
+    S4_arr[1,2,0,1] = S4_arr[1,0,2,1]
+    S4_arr[2,1,0,2] = S4_arr[2,0,1,2] #10 T58
 
+    S4_arr[0,1,0,1] = S4_arr[1,0,1,0] = S4_arr[1,0,0,1]
+    S4_arr[0,2,0,2] = S4_arr[2,0,2,0] = S4_arr[2,0,0,2] #4 T62
+
+    S4_arr[0,2,0,1] = S4_arr[0,1,0,2] = S4_arr[2,0,1,0] = S4_arr[1,0,2,0] = S4_arr[1,0,0,2]
     S4_arr[2,0,0,1] = S4_arr[1,0,0,2]
     S4_arr[0,2,1,0] = S4_arr[0,1,2,0]
     S4_arr[2,1,0,0] = S4_arr[0,0,1,2] = S4_arr[0,0,2,1] = S4_arr[1,2,0,0] 
     S4_arr[0,0,1,1] = S4_arr[1,1,0,0]
-    S4_arr[0,0,2,2] = S4_arr[2,2,0,0] #7
+    S4_arr[0,0,2,2] = S4_arr[2,2,0,0] #11 T 73
 
 
     S4_arr[0,0,1,0] = S4_arr[0,1,0,0]
     S4_arr[0,0,2,0] = S4_arr[0,2,0,0]
     S4_arr[0,0,0,1] = S4_arr[1,0,0,0]
-    S4_arr[0,0,0,2] = S4_arr[2,0,0,0] #4
+    S4_arr[0,0,0,2] = S4_arr[2,0,0,0] #4 T77
 
-
-    # ADD UNBOUND !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO!!!!
-
+    S4_arr[1,1,1,1] += S4_Au
+    S4_arr[2,2,2,2] += S4_Bu
 
 
 
