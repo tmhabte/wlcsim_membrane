@@ -74,18 +74,18 @@ def calc_sf2(psol, corrs, phius, k):
     j2 = grid[1]
 
     
-    S_PP = ((2/x_p**2)*(x_p + np.exp(-x_p) - 1))[0]
+    S_PP = ((2/x_p**2)*(x_p + np.exp(-x_p) - 1))#[0]
     
-    S_AuAu = ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))[0]
-
-    S_BuBu = ((2/x_B**2)*(x_B + np.exp(-x_B) - 1))[0]
+    S_AuAu = ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))#[0]
+    # print("SAuAu: ", S_AuAu)
+    S_BuBu = ((2/x_B**2)*(x_B + np.exp(-x_B) - 1))#[0]
 
 
     S_AA = 0
     C = np.zeros((M,M))
     # diagonal
     index = (j1 == j2)
-    integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))[0]
+    integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))#[0]
     corr = sA
     C[np.where((index) != 0)] += corr * integral
 #     print("removed diag")
@@ -97,7 +97,7 @@ def calc_sf2(psol, corrs, phius, k):
     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
 
     S_AA = np.sum(C)
-
+    # print("S_AAbound: ", S_AA)
 
     S_BB = 0
     C = np.zeros((M,M))
