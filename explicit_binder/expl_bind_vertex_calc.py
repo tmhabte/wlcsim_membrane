@@ -48,10 +48,10 @@ def sf2_inv_zeroq(psol, corrs, phius, K1):
 
 def sf2_inv_raw(psol, corrs, phius, K1):
     # [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
-    N = psol.N
-    phi_p = psol.phi_p
+    # N = psol.N
+    # phi_p = psol.phi_p
     if np.linalg.norm(K1) < 1e-5:
-        S2_mat_k0 = calc_sf2(psol, corrs, phius, np.array([0.0001]))
+        S2_mat_k0 = calc_sf2(psol, corrs, phius, 0.0001)
         # S2_mat_k1[-1,-1] *= (N / M)    
         S2_inv = np.linalg.inv(S2_mat_k0)
         return S2_inv
@@ -69,22 +69,21 @@ def gamma3(psol, s_bnd_A, s_bnd_B, phius, Ks):
 
     
     # [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
-    phi_p = psol.phi_p
+    # phi_p = psol.phi_p
     corrs = [s_bnd_A, s_bnd_B]
-    N = psol.N
+    # N = psol.N
 
     #calc sf2
     S2_inv_red = sf2_inv_raw(psol, corrs, phius, K1)
-
     S2_inv_red_2 = sf2_inv_raw(psol, corrs, phius, K2)
- 
     S2_inv_red_3 = sf2_inv_raw(psol, corrs, phius, K3)
+    # print("S2_inv: ", S2_inv_red, S2_inv_red_2, S2_inv_red_3)
 
 
     # print("vm=A=1")
     s3 = calc_sf3(psol, corrs, phius, K1, K2, K3)
     # s3[3,3,3] *=  N/M
-
+    # print("s3:", s3)
     T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,-1,-1]]) # S = - (O+A+B)    
     #      
     G3 = np.einsum("ijk,il,jm,kn-> lmn", -s3, S2_inv_red, S2_inv_red_2, S2_inv_red_3)
@@ -105,7 +104,7 @@ def gamma4(psol, s_bnd_A, s_bnd_B, phius, Ks):
 
     # [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
     phi_p = psol.phi_p
-    N = psol.N
+    # N = psol.N
     corrs = [s_bnd_A, s_bnd_B]
 
     # print("vm=a=1")
