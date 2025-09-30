@@ -133,45 +133,98 @@ def S_AAP31(k_alpha, k_beta, bA, N_A):
     
     if np.isclose(a_alpha, a_beta, atol=1e-14):
         # limit case: a_alpha = a_beta
+        # print("31:", 0.5 * f(a_alpha) * N_A)
         return 0.5 * f(a_alpha) * N_A
     else:
+        # print((f(a_beta) - f(a_alpha)) / (a_alpha - a_beta))
         return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
 
 import numpy as np
 
 # def S_AAP32(k2, k3, bA, bP, N_A, N_P, n_i):
-def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+# def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
      
       
-    """
-    Compute the AAP32 (case 2) integral:
+#     """
+#     Compute the AAP32 (case 2) integral:
     
-    I = (2){ PartA + PartB } 
-    with structure given in the problem.
+#     I = (2){ PartA + PartB } 
+#     with structure given in the problem.
+#     """
+#     a2 = (bA**2 / 6.0) * k2**2
+#     a3 = (bA**2 / 6.0) * k3**2
+#     c3 = (bP**2 / 6.0) * k3**2
+#     delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+
+#     # G(a2,a3,N_A): n2,n1 contribution
+#     if np.isclose(a2, a3, atol=1e-14):
+#         G = (1.0 / a2**2) * (1 - np.exp(-a2 * N_A) * (1 + a2 * N_A))
+#     else:
+#         G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
+    
+#     # n3 contribution: part A + part B
+#     n3_factor = np.exp(-delJ3)
+
+#     # if np.isclose(c3, 0.0, atol=1e-14):
+#     #     n3_factor = (N_P - n_i) + n_i  # just N_P
+#     # else:
+#         # partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
+#         # partB = (1 - np.exp(-c3 * n_i)) / c3
+#         # n3_factor = partA + partB
+#     print("32:", 2.0 * G * n3_factor)
+#     return 2.0 * G * n3_factor
+
+
+import numpy as np
+
+def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):
+    """
+    Compute the AAP32 (case 2) integral with all k→0 limits handled.
+    
+    Parameters
+    ----------
+    k2, k3 : float
+        Wavevectors.
+    bA, bP : float
+        Statistical segment lengths for A and P.
+    N_A, N_P : int
+        Number of A and P monomers.
+    M : int
+        Number of blocks.
+    j3, j1 : int
+        Indices of P-block connections.
     """
     a2 = (bA**2 / 6.0) * k2**2
     a3 = (bA**2 / 6.0) * k3**2
     c3 = (bP**2 / 6.0) * k3**2
-    delJ3 = (bP**2/6) * (N_P / (M-1)) * k3**2 * (j3-j1)
+    delJ3 = (bP**2 / 6.0) * (N_P / (M - 1)) * k3**2 * (j3 - j1)
 
-    # G(a2,a3,N_A): n2,n1 contribution
-    if np.isclose(a2, a3, atol=1e-14):
+    # ----- G(a2,a3,N_A) -----
+    if np.isclose(a2, 0.0, atol=1e-14) and np.isclose(a3, 0.0, atol=1e-14):
+        # Case 1: both zero
+        G = 0.5 * N_A**2
+
+    elif np.isclose(a2, 0.0, atol=1e-14):
+        # Case 2: a2 -> 0, a3 ≠ 0
+        G = (N_A - (1 - np.exp(-a3 * N_A)) / a3) / a3
+
+    elif np.isclose(a3, 0.0, atol=1e-14):
+        # Case 3: a3 -> 0, a2 ≠ 0
+        G = (N_A - (1 - np.exp(-a2 * N_A)) / a2) / a2
+
+    elif np.isclose(a2, a3, atol=1e-14):
+        # Case 4: a2 ≈ a3 ≠ 0
         G = (1.0 / a2**2) * (1 - np.exp(-a2 * N_A) * (1 + a2 * N_A))
-    else:
-        G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
-    
-    # n3 contribution: part A + part B
-    n3_factor = np.exp(-delJ3)
 
-    # if np.isclose(c3, 0.0, atol=1e-14):
-    #     n3_factor = (N_P - n_i) + n_i  # just N_P
-    # else:
-        # partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
-        # partB = (1 - np.exp(-c3 * n_i)) / c3
-        # n3_factor = partA + partB
-    
+    else:
+        # Case 5: general
+        G = ((1 - np.exp(-a2 * N_A)) / a2 - (1 - np.exp(-a3 * N_A)) / a3) / (a3 - a2)
+
+    # ----- n3 contribution -----
+    n3_factor = np.exp(-delJ3)
+    # print(2.0 * G * n3_factor)
     return 2.0 * G * n3_factor
-import numpy as np
+
 
 def S_AAP33(k1, k2, k3, bA, bB, bP, N_A, N_P, M, j1, j2, j3):
     """
@@ -200,7 +253,7 @@ def S_AAP33(k1, k2, k3, bA, bB, bP, N_A, N_P, M, j1, j2, j3):
     #     partA = (1 - np.exp(-c3 * (N_P - n_i))) / c3
     #     partB = (1 - np.exp(-c3 * n_i)) / c3
     #     n3_factor = partA + partB
-    
+    # print("33:", n1n2_factor * n3_factor)
     return n1n2_factor * n3_factor
 
 import numpy as np
