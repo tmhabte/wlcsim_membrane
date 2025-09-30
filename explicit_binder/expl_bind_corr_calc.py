@@ -64,7 +64,9 @@ def calc_sf2(psol, corrs, phius, k):
     sAsA = np.outer(sA, sA)
     sBsB = np.outer(sB, sB)
     sAsB = np.outer(sA, sB)
-    
+
+    k = np.linalg.norm(k)
+
     x_p = (1/6)*N_P*b_P**2*k**2
     x_A = (1/6)*N_A*b_A**2*k**2
     x_B = (1/6)*N_B*b_B**2*k**2
@@ -405,6 +407,10 @@ def calc_sf3(psol, corrs, phius, k1, k2, k12):
     # phi_Au = psol.phi_Au
     # phi_Bb = psol.phi_Bb
     # phi_Bu = psol.phi_Bu
+    k1 = np.linalg.norm(k1)
+    k2 = np.linalg.norm(k2)
+    k12 = np.linalg.norm(k12)
+
 
     sA, sB = corrs
     # correlations
@@ -670,6 +676,10 @@ def calc_sf4(psol, corrs, phius, k1, k2, k3, k123):
     # phi_Au = psol.phi_Au
     # phi_Bb = psol.phi_Bb
     # phi_Bu = psol.phi_Bu
+    k1 = np.linalg.norm(k1)
+    k2 = np.linalg.norm(k2)
+    k3 = np.linalg.norm(k3)
+    k123 = np.linalg.norm(k123)
 
     sA, sB = corrs
     sP = np.ones_like(sA)
