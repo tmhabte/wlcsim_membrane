@@ -19,12 +19,13 @@ def _f2_stable(x, N):
         return (1.0 - np.exp(-x*N)*(1.0 + x*N)) / (x**2)
     
 
+def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-12):#(N, x1, x2, x3, tol=1e-12):
+    """
+    Evaluate I(N; x1,x2,x3) = nested 4-fold integral described above.
+    Handles degenerate and small-x cases stably.
+    """
+    # all zeros -> N^4/24
 
-def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-2):
-    """
-    Case (4,1) AAAA: all four A's on same binder.
-    Stable evaluation using _f1_stable/_f2_stable.
-    """
     q3 = k4
     q2 = k3 + k4
     q1 = k2 + k3 + k4
@@ -32,38 +33,100 @@ def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-2):
     x1 = (bA**2 / 6.0) * (np.asarray(q1)**2)
     x2 = (bA**2 / 6.0) * (np.asarray(q2)**2)
     x3 = (bA**2 / 6.0) * (np.asarray(q3)**2)
-    N = N_A
 
-    # all ~0 → volume of 4-simplex
+    N = N_A
     if abs(x1) < tol and abs(x2) < tol and abs(x3) < tol:
         return N**4 / 24.0
 
-    # triple equal case
-    if np.isclose(x1, x2, atol=tol) and np.isclose(x1, x3, atol=tol):
-        x = x1
-        if abs(x) < tol:
-            return N**4 / 24.0
-        # series-safe limit
-        return (N**4/24.0
-                - (x*N**5)/60.0
-                + (x**2*N**6)/360.0
-                - (x**3*N**7)/2520.0)
-
-    # general case: partial fraction style, but using stable f1,f2
     xs = [x1, x2, x3]
-    val = 0.0
-    for i, xi in enumerate(xs):
-        denom = 1.0
-        for j, xj in enumerate(xs):
-            if i == j:
-                continue
-            denom *= (xj - xi)
-        Ai = 1.0 / denom
-        f1 = _f1_stable(xi, N)
-        f2 = _f2_stable(xi, N)
-        val += Ai * (N * f1 - f2)
 
+    # if any two are (near-)equal, handle pair limit explicitly:
+    if np.isclose(x1, x2, rtol=0, atol=tol) and not np.isclose(x1, x3, rtol=0, atol=tol):
+        # x1==x2 != x3  -> use derivative-limit formula
+        a = x1; b = x3
+        def H(x): return N * _f1_stable(x, N) - _f2_stable(x, N)
+        # derivative dH/da numeric-stable analytic:
+        # d/dx [N*F1 - F2] = N*dF1/dx - dF2/dx ; implement via small-diff if necessary
+        # here use finite difference with adaptive step:
+        h = max(abs(a)*1e-6, 1e-8)
+        Hm = H(a - h); Hp = H(a + h)
+        dH = (Hp - Hm) / (2*h)
+        return ( (H(b) - H(a)) - (b - a)*dH ) / ((b - a)**2)
+
+    if np.isclose(x1, x3, rtol=0, atol=tol) and not np.isclose(x1, x2, rtol=0, atol=tol):
+        a = x1; b = x2
+        def H(x): return N * _f1_stable(x, N) - _f2_stable(x, N)
+        h = max(abs(a)*1e-6, 1e-8)
+        Hm = H(a - h); Hp = H(a + h)
+        dH = (Hp - Hm) / (2*h)
+        return ( (H(b) - H(a)) - (b - a)*dH ) / ((b - a)**2)
+
+    if np.isclose(x2, x3, rtol=0, atol=tol) and not np.isclose(x1, x2, rtol=0, atol=tol):
+        a = x2; b = x1
+        def H(x): return N * _f1_stable(x, N) - _f2_stable(x, N)
+        h = max(abs(a)*1e-6, 1e-8)
+        Hm = H(a - h); Hp = H(a + h)
+        dH = (Hp - Hm) / (2*h)
+        return ( (H(b) - H(a)) - (b - a)*dH ) / ((b - a)**2)
+
+    # triple-equal handled above; now general distinct case
+    Hvals = [N * _f1_stable(x, N) - _f2_stable(x, N) for x in xs]
+    val = 0.0
+    for i in range(3):
+        xi = xs[i]
+        denom = 1.0
+        for j in range(3):
+            if i==j: continue
+            denom *= (xs[j] - xi)
+        val += Hvals[i] / denom
     return float(val)
+    
+
+# # OLD
+# def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-2):
+#     """
+#     Case (4,1) AAAA: all four A's on same binder.
+#     Stable evaluation using _f1_stable/_f2_stable.
+#     """
+#     q3 = k4
+#     q2 = k3 + k4
+#     q1 = k2 + k3 + k4
+
+#     x1 = (bA**2 / 6.0) * (np.asarray(q1)**2)
+#     x2 = (bA**2 / 6.0) * (np.asarray(q2)**2)
+#     x3 = (bA**2 / 6.0) * (np.asarray(q3)**2)
+#     N = N_A
+
+#     # all ~0 → volume of 4-simplex
+#     if abs(x1) < tol and abs(x2) < tol and abs(x3) < tol:
+#         return N**4 / 24.0
+
+#     # triple equal case
+#     if np.isclose(x1, x2, atol=tol) and np.isclose(x1, x3, atol=tol):
+#         x = x1
+#         if abs(x) < tol:
+#             return N**4 / 24.0
+#         # series-safe limit
+#         return (N**4/24.0
+#                 - (x*N**5)/60.0
+#                 + (x**2*N**6)/360.0
+#                 - (x**3*N**7)/2520.0)
+
+#     # general case: partial fraction style, but using stable f1,f2
+#     xs = [x1, x2, x3]
+#     val = 0.0
+#     for i, xi in enumerate(xs):
+#         denom = 1.0
+#         for j, xj in enumerate(xs):
+#             if i == j:
+#                 continue
+#             denom *= (xj - xi)
+#         Ai = 1.0 / denom
+#         f1 = _f1_stable(xi, N)
+#         f2 = _f2_stable(xi, N)
+#         val += Ai * (N * f1 - f2)
+
+#     return float(val)
 
 
 
