@@ -82,7 +82,7 @@ def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-12):#(N, x1, x2, x3, tol=1e-12):
     return float(val)
     
 
-# # OLD
+# # OLD-NOTE HIGH TOLERANCE
 # def S_AAAA41(k1, k2, k3, k4, bA, N_A, tol=1e-2):
 #     """
 #     Case (4,1) AAAA: all four A's on same binder.
@@ -208,64 +208,126 @@ def S_AAAA44(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j1, j2, j3, j4, tol=1e-12):
     return backbone * prod
 
 
+# def S_AAAP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=1e-12):
+#     """
+#     Case (4,1) for AAAP: A1,A2,A3 and P all attached to the same backbone monomer.
+#     The P point is anchored (no backbone integral). The remaining integral is the
+#     triple-nested integral over the three A contour variables:
+#         I = ∫_0^{N_A} dn3 ∫_0^{n3} dn2 ∫_0^{n2} dn1 exp[-x2 (n3-n2) - x1 (n2-n1)]
+#     Canonical mapping (for A1,A2,A3): q2 = k3, q1 = k2 + k3.
+#     k1 (the leftmost A) does not enter the triple-block exponent directly under this
+#     s-ordering — its contribution shows up when summing permutations externally.
+#     """
+#     # build x's (scalars)
+#     q2 = k3
+#     q1 = k2 + k3
+#     x1 = (bA**2 / 6.0) * (q1**2)
+#     x2 = (bA**2 / 6.0) * (q2**2)
+#     N = N_A
+
+#     # If both x1,x2 are ~0 -> integral = volume of 3-simplex = N^3/6
+#     if abs(x1) < tol and abs(x2) < tol:
+#         return N**3 / 6.0
+
+#     # Stable evaluation of the triple nested integral:
+#     # Use the standard closed form (same algebraic structure as your S_AAA31)
+#     # Let f(x) = (1 - exp(-x N)) / x ; g(x) = (1 - exp(-x N)(1 + x N)) / x^2
+#     f1 = _f1_stable(x1, N)
+#     f2 = _f1_stable(x2, N)
+#     g1 = _f2_stable(x1, N)
+#     g2 = _f2_stable(x2, N)
+
+#     if abs(x1) < 1e-2 and abs(x2) < 1e-2:
+#         # Series expansion for whole triple integral
+#         # print("return 2")
+#         # print(N**3/6.0 - (N**4/24.0)*(x1 + x2) + (N**5/120.0)*(x1**2 + 3*x1*x2 + x2**2))
+#         return N**3/6.0 - (N**4/24.0)*(x1 + x2) + (N**5/120.0)*(x1**2 + 3*x1*x2 + x2**2)
+        
+#     # analytic expression (equivalent to the S_AAA31 closed form)
+#     # I = (1/(x1 - x2)) * [ (f2 - f1) / x? ... ]
+#     # A stable and compact form is:
+#     if np.isclose(x1, x2, atol=tol):
+#         # pair limit x1 -> x2
+#         # limit gives: (N / x1**2) + (N*x1**2*exp(-x1*N) - 2*x1*(1 - exp(-x1*N)))/x1**4
+#         if abs(x1) < tol:
+#             return N**3 / 6.0
+#         num = (N * x1**2 * np.exp(-x1 * N) - 2.0 * x1 * (1.0 - np.exp(-x1 * N)))
+#         # print("return 3")
+#         # print((N / x1**2) + num / (x1**4))
+#         return (N / x1**2) + num / (x1**4)
+#     else:
+#         # general distinct case using stable f & g
+#         # print("GENERAL- WHERE THE ISSUE IS")
+#         # print((N / (x1 * x2)
+#         #         + (f1) / (x1**2 * (x1 - x2))
+#         #         - (f2) / (x2**2 * (x1 - x2))))
+#         # print("ALT")
+#         # print(N/(x1*x2) + ( (f1/x1**2) - (f2/x2**2) ) / (x1 - x2))
+#         return (N / (x1 * x2)
+#                 + (f1) / (x1**2 * (x1 - x2))
+#                 - (f2) / (x2**2 * (x1 - x2)))
+
 def S_AAAP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=1e-12):
     """
-    Case (4,1) for AAAP: A1,A2,A3 and P all attached to the same backbone monomer.
-    The P point is anchored (no backbone integral). The remaining integral is the
-    triple-nested integral over the three A contour variables:
-        I = ∫_0^{N_A} dn3 ∫_0^{n3} dn2 ∫_0^{n2} dn1 exp[-x2 (n3-n2) - x1 (n2-n1)]
-    Canonical mapping (for A1,A2,A3): q2 = k3, q1 = k2 + k3.
-    k1 (the leftmost A) does not enter the triple-block exponent directly under this
-    s-ordering — its contribution shows up when summing permutations externally.
-    """
-    # build x's (scalars)
-    q2 = k3
-    q1 = k2 + k3
-    x1 = (bA**2 / 6.0) * (q1**2)
-    x2 = (bA**2 / 6.0) * (q2**2)
-    N = N_A
+    I^(4,1) for AAAP: three A contour integrals with the binder-attachment anchored (n1=0).
+    Canonical mapping:
+       x_alpha = (bA^2/6) * k4^2
+       x_beta  = (bA^2/6) * (k3 + k4)^2
+       x_delta = (bA^2/6) * (k2 + k3 + k4)^2
 
-    # If both x1,x2 are ~0 -> integral = volume of 3-simplex = N^3/6
-    if abs(x1) < tol and abs(x2) < tol:
+    Returns numerical value with stable handling of small / nearly-equal x's.
+    """
+    # build x's
+    x_alpha = (bA**2 / 6.0) * (np.asarray(k4)**2)
+    x_beta  = (bA**2 / 6.0) * (np.asarray(k3 + k4)**2)
+    x_delta = (bA**2 / 6.0) * (np.asarray(k2 + k3 + k4)**2)
+
+    xs = [float(x_alpha), float(x_beta), float(x_delta)]
+    N = float(N_A)
+
+    # all approximately zero -> N^3 / 6 (volume of 3-simplex)
+    if all(abs(x) < tol for x in xs):
         return N**3 / 6.0
 
-    # Stable evaluation of the triple nested integral:
-    # Use the standard closed form (same algebraic structure as your S_AAA31)
-    # Let f(x) = (1 - exp(-x N)) / x ; g(x) = (1 - exp(-x N)(1 + x N)) / x^2
-    f1 = _f1_stable(x1, N)
-    f2 = _f1_stable(x2, N)
-    g1 = _f2_stable(x1, N)
-    g2 = _f2_stable(x2, N)
+    # helper H(x) = F1(x)  (for this anchored-1 case the partial-frac numerator is F1)
+    def H(x):
+        return _f1_stable(x, N)
 
-    if abs(x1) < 1e-2 and abs(x2) < 1e-2:
-        # Series expansion for whole triple integral
-        # print("return 2")
-        # print(N**3/6.0 - (N**4/24.0)*(x1 + x2) + (N**5/120.0)*(x1**2 + 3*x1*x2 + x2**2))
-        return N**3/6.0 - (N**4/24.0)*(x1 + x2) + (N**5/120.0)*(x1**2 + 3*x1*x2 + x2**2)
-        
-    # analytic expression (equivalent to the S_AAA31 closed form)
-    # I = (1/(x1 - x2)) * [ (f2 - f1) / x? ... ]
-    # A stable and compact form is:
-    if np.isclose(x1, x2, atol=tol):
-        # pair limit x1 -> x2
-        # limit gives: (N / x1**2) + (N*x1**2*exp(-x1*N) - 2*x1*(1 - exp(-x1*N)))/x1**4
-        if abs(x1) < tol:
-            return N**3 / 6.0
-        num = (N * x1**2 * np.exp(-x1 * N) - 2.0 * x1 * (1.0 - np.exp(-x1 * N)))
-        # print("return 3")
-        # print((N / x1**2) + num / (x1**4))
-        return (N / x1**2) + num / (x1**4)
-    else:
-        # general distinct case using stable f & g
-        # print("GENERAL- WHERE THE ISSUE IS")
-        # print((N / (x1 * x2)
-        #         + (f1) / (x1**2 * (x1 - x2))
-        #         - (f2) / (x2**2 * (x1 - x2))))
-        # print("ALT")
-        # print(N/(x1*x2) + ( (f1/x1**2) - (f2/x2**2) ) / (x1 - x2))
-        return (N / (x1 * x2)
-                + (f1) / (x1**2 * (x1 - x2))
-                - (f2) / (x2**2 * (x1 - x2)))
+    # handle pairwise-equality / degeneracies explicitly
+    # If two are equal (within tol) use an analytic limit; we implement the exact algebraic limit below.
+    def pair_limit(a, b, c):
+        # assume a == b (repeated), c distinct. We want final value:
+        # I = H(a)/((a-c)*(a-b=0)) + H(b)/... -> compute limit a->b analytically.
+        # Derived closed form for a==b:
+        # I = (H(c) - H(a) - (c - a)*H'(a))/((c-a)^2)
+        # We'll compute H'(a) numerically via small central difference for stability.
+        h = max(abs(a) * 1e-6, 1e-8)
+        Hp = H(a + h); Hm = H(a - h)
+        Hp_arr = (Hp - Hm) / (2*h)
+        return (H(c) - H(a) - (c - a) * Hp_arr) / ((c - a) ** 2)
+
+    # check pairwise equals
+    xa, xb, xc = xs
+    # three equal handled above
+    if np.isclose(xa, xb, atol=tol) and not np.isclose(xa, xc, atol=tol):
+        return pair_limit(xa, xb, xc)
+    if np.isclose(xa, xc, atol=tol) and not np.isclose(xa, xb, atol=tol):
+        return pair_limit(xa, xc, xb)
+    if np.isclose(xb, xc, atol=tol) and not np.isclose(xb, xa, atol=tol):
+        return pair_limit(xb, xc, xa)
+
+    # general distinct case: partial fraction sum
+    Hvals = [H(x) for x in xs]
+    val = 0.0
+    for i in range(3):
+        denom = 1.0
+        xi = xs[i]
+        for j in range(3):
+            if i == j:
+                continue
+            denom *= (xi - xs[j])
+        val += Hvals[i] / denom
+    return float(val)
 
 def S_AAAP42(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_trip, j_iso, tol=1e-12):
     """
