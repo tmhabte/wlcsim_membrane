@@ -23,72 +23,106 @@ def calc_fas(s_bnd_A, s_bnd_B):
     f_o = np.sum(sig_0) / (np.sum(np.ones(len(s_bnd_A))))
     return [f_a, f_b, f_o]
 
-# def calc_mu_phi_bind(psol, phi_Au_arr, phi_Bu_arr):
-#     v_P = psol.v_p
-#     N_P = psol.N_P
-#     b_P = psol.b_P
-#     v_A = psol.v_A
-#     N_A = psol.N_A
-#     b_A = psol.b_A
-#     v_B = psol.v_B
-#     N_B = psol.N_B
-#     b_B = psol.b_B
-#     M = psol.M
-#     phi_S = psol.solv_cons
-#     phi_P = psol.phi_p
-#     p_markA, p_markB = psol.poly_marks
-#     chi_AB = psol.chi_AB
-#     e_A, e_B = psol.e_m
+def calc_mu_phi_bind_beaker(psol, phiaf, phibf, rtol):
+    # BRUTE FORCE
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    phi_S = psol.solv_cons
+    phi_P = psol.phi_p
+    p_markA, p_markB = psol.poly_marks
+    chi_AB = psol.chi_AB
+    e_A, e_B = psol.e_m
 
-#     num_pnts = len(phi_Au_arr)
+    phi_Au_arr = np.arange(0,phiaf, 0.001)
+    phi_Bu_arr = np.arange(0,phibf, 0.001)
 
-#     phi_Au_mat = np.zeros((num_pnts,num_pnts))
-#     phi_Bu_mat = np.zeros((num_pnts,num_pnts))
-#     sA_mat = np.zeros((num_pnts,num_pnts, M))
-#     sB_mat = np.zeros((num_pnts,num_pnts, M))
-#     fA_mat = np.zeros((num_pnts,num_pnts))
-#     fB_mat = np.zeros((num_pnts,num_pnts))
-#     muA_mat = np.zeros((num_pnts,num_pnts))
-#     muB_mat = np.zeros((num_pnts,num_pnts))
-#     phi_Ab_mat = np.zeros((num_pnts,num_pnts))
-#     phi_Bb_mat = np.zeros((num_pnts,num_pnts))
+    num_pnts_A = len(phi_Au_arr)
+    num_pnts_B = len(phi_Bu_arr)
 
-#     for i in range(len(phi_Au_arr)):
-#         print("-"*25)
-#         phi_Au = phi_Au_arr[i]
-#         print("PHI_A^(U): ", phi_Au)
-#         for j in range(len(phi_Bu_arr)):
-#             phi_Au = phi_Au_arr[i]
-#             phi_Bu = phi_Bu_arr[j]
-#             phi_Au_mat[i,j] = phi_Au
-#             phi_Bu_mat[i,j] = phi_Bu   
+    phi_Bu_mat = np.zeros((num_pnts_A,num_pnts_B))
+    phi_Au_mat = np.zeros((num_pnts_A,num_pnts_B))
+    sA_mat = np.zeros((num_pnts_A,num_pnts_B, M))
+    sB_mat = np.zeros((num_pnts_A,num_pnts_B, M))
+    fA_mat = np.zeros((num_pnts_A,num_pnts_B))
+    fB_mat = np.zeros((num_pnts_A,num_pnts_B))
+    muA_mat = np.zeros((num_pnts_A,num_pnts_B))
+    muB_mat = np.zeros((num_pnts_A,num_pnts_B))
+    phi_Ab_mat = np.zeros((num_pnts_A,num_pnts_B))
+    phi_Bb_mat = np.zeros((num_pnts_A,num_pnts_B))
+
+    for i in range(len(phi_Au_arr)):
+        # print("-"*25)
+        # phi_Au = phi_Au_arr[i]
+        # print("PHI_A^(U): ", phi_Au)
+        for j in range(len(phi_Bu_arr)):
+            phi_Au = phi_Au_arr[i]
+            phi_Bu = phi_Bu_arr[j]
             
-#             s_Aj, s_Bj = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B)   
-#             sA_mat[i,j] = s_Aj
-#             sB_mat[i,j] = s_Bj
-#             fA, fB, f0 = calc_fas(s_Aj, s_Bj)
-#             fA_mat[i,j] = fA
-#             fB_mat[i,j] = fB
+            s_Aj, s_Bj = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B)   
 
-#             phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_P * np.sum(s_Aj)
-#             phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_P * np.sum(s_Bj)
-#             phi_Ab_mat[i,j] = phi_Ab
-#             phi_Bb_mat[i,j] = phi_Bb 
+            fA, fB, f0 = calc_fas(s_Aj, s_Bj)
 
-#             # print("$\phi_A^{(B)}, \phi_B^{(B)} $:", phi_Ab, phi_Bb)
-#             mu_A = np.log(phi_Au) + v_A*N_A*chi_AB*(phi_Bb+phi_Bu)
-#             mu_B = np.log(phi_Bu) + v_B*N_B*chi_AB*(phi_Ab+phi_Au)
-#             muA_mat[i,j] = mu_A
-#             muB_mat[i,j] = mu_B
-#             # print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
-#             # if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 1):
-#             #     raise  ValueError("sum of phis > 1; decrease unbound fractions ")
-#             if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 0.99) and (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S < 1):
-#                 print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
-#                 print("MU: ", (mu_A, mu_B))
-#                 print("PHI_B^(U): ", phi_Bu)
-#     return muA_mat, muB_mat, sA_mat, sB_mat, fA_mat, fB_mat, phi_Au_mat, phi_Bu_mat, phi_Ab_mat, phi_Bb_mat, 
 
+            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_P * np.sum(s_Aj)
+            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_P * np.sum(s_Bj)
+            if (np.isclose(phi_Au + phi_Ab, phiaf, rtol = rtol)) and (np.isclose(phi_Bu + phi_Bb, phibf, rtol = rtol)):
+                phi_Au_mat[i,j] = phi_Au
+                phi_Bu_mat[i,j] = phi_Bu   
+                sA_mat[i,j] = s_Aj
+                sB_mat[i,j] = s_Bj
+                fA_mat[i,j] = fA
+                fB_mat[i,j] = fB            
+                phi_Ab_mat[i,j] = phi_Ab
+                phi_Bb_mat[i,j] = phi_Bb 
+    
+                # print("$\phi_A^{(B)}, \phi_B^{(B)} $:", phi_Ab, phi_Bb)
+                mu_A = np.log(phi_Au) + v_A*N_A*chi_AB*(phi_Bb+phi_Bu)
+                mu_B = np.log(phi_Bu) + v_B*N_B*chi_AB*(phi_Ab+phi_Au)
+                muA_mat[i,j] = mu_A
+                muB_mat[i,j] = mu_B
+                # print("MU: ", (mu_A, mu_B))
+            # else:
+            #     phi_Au_mat[i,j] = phi_Au
+            #     phi_Bu_mat[i,j] = phi_Bu   
+            #     sA_mat[i,j] = s_Aj
+            #     sB_mat[i,j] = s_Bj
+            #     fA_mat[i,j] = fA
+            #     fB_mat[i,j] = fB            
+            #     phi_Ab_mat[i,j] = phi_Ab
+            #     phi_Bb_mat[i,j] = phi_Bb
+            #     muA_mat[i,j] = mu_A
+            #     muB_mat[i,j] = mu_B
+            # print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
+            # if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 1):
+            #     raise  ValueError("sum of phis > 1; decrease unbound fractions ")
+                # print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
+                # print("MU: ", (mu_A, mu_B))
+                # print("PHI_B^(U): ", phi_Bu)
+    mask_valid = (muA_mat != 0) & (muB_mat != 0)
+    mat_array = [muA_mat, muB_mat, sA_mat, sB_mat, fA_mat, fB_mat, phi_Au_mat, phi_Bu_mat, phi_Ab_mat, phi_Bb_mat]
+    valid_array = []
+    for mat in mat_array:
+        mat_valid = mat[mask_valid]
+        valid_array.append(mat_valid)
+    # muA_valid = muA_mat[mask_valid]
+    # muB_valid = muB_mat[mask_valid]
+    # sA_valid = sA_mat[mask_valid]
+    # sB_valid = sB_mat[mask_valid]
+    # fA_valid = fA_mat[mask_valid]
+    # fB_valid = fB_mat[mask_valid]
+    # phiAu_valid = phi_Au_mat[mask_valid]
+    # phiBu_valid = phi_Bu_mat[mask_valid]
+    # phiAb_valid = phi_Ab_mat[mask_valid]
+    # phiBb_valid = phi_Bb_mat[mask_valid]
+    return valid_array
 
     
 def calc_mu_phi_bind_filter(psol, phi_Au_arr, phi_Bu_arr):
@@ -188,6 +222,73 @@ def calc_mu_phi_bind_filter(psol, phi_Au_arr, phi_Bu_arr):
     # phiBb_valid = phi_Bb_mat[mask_valid]
     return valid_array
     # return muA_mat, muB_mat, sA_mat, sB_mat, fA_mat, fB_mat, phi_Au_mat, phi_Bu_mat, phi_Ab_mat, phi_Bb_mat, 
+
+
+# def calc_mu_phi_bind(psol, phi_Au_arr, phi_Bu_arr):
+#     v_P = psol.v_p
+#     N_P = psol.N_P
+#     b_P = psol.b_P
+#     v_A = psol.v_A
+#     N_A = psol.N_A
+#     b_A = psol.b_A
+#     v_B = psol.v_B
+#     N_B = psol.N_B
+#     b_B = psol.b_B
+#     M = psol.M
+#     phi_S = psol.solv_cons
+#     phi_P = psol.phi_p
+#     p_markA, p_markB = psol.poly_marks
+#     chi_AB = psol.chi_AB
+#     e_A, e_B = psol.e_m
+
+#     num_pnts = len(phi_Au_arr)
+
+#     phi_Au_mat = np.zeros((num_pnts,num_pnts))
+#     phi_Bu_mat = np.zeros((num_pnts,num_pnts))
+#     sA_mat = np.zeros((num_pnts,num_pnts, M))
+#     sB_mat = np.zeros((num_pnts,num_pnts, M))
+#     fA_mat = np.zeros((num_pnts,num_pnts))
+#     fB_mat = np.zeros((num_pnts,num_pnts))
+#     muA_mat = np.zeros((num_pnts,num_pnts))
+#     muB_mat = np.zeros((num_pnts,num_pnts))
+#     phi_Ab_mat = np.zeros((num_pnts,num_pnts))
+#     phi_Bb_mat = np.zeros((num_pnts,num_pnts))
+
+#     for i in range(len(phi_Au_arr)):
+#         print("-"*25)
+#         phi_Au = phi_Au_arr[i]
+#         print("PHI_A^(U): ", phi_Au)
+#         for j in range(len(phi_Bu_arr)):
+#             phi_Au = phi_Au_arr[i]
+#             phi_Bu = phi_Bu_arr[j]
+#             phi_Au_mat[i,j] = phi_Au
+#             phi_Bu_mat[i,j] = phi_Bu   
+            
+#             s_Aj, s_Bj = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B)   
+#             sA_mat[i,j] = s_Aj
+#             sB_mat[i,j] = s_Bj
+#             fA, fB, f0 = calc_fas(s_Aj, s_Bj)
+#             fA_mat[i,j] = fA
+#             fB_mat[i,j] = fB
+
+#             phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_P * np.sum(s_Aj)
+#             phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_P * np.sum(s_Bj)
+#             phi_Ab_mat[i,j] = phi_Ab
+#             phi_Bb_mat[i,j] = phi_Bb 
+
+#             # print("$\phi_A^{(B)}, \phi_B^{(B)} $:", phi_Ab, phi_Bb)
+#             mu_A = np.log(phi_Au) + v_A*N_A*chi_AB*(phi_Bb+phi_Bu)
+#             mu_B = np.log(phi_Bu) + v_B*N_B*chi_AB*(phi_Ab+phi_Au)
+#             muA_mat[i,j] = mu_A
+#             muB_mat[i,j] = mu_B
+#             # print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
+#             # if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 1):
+#             #     raise  ValueError("sum of phis > 1; decrease unbound fractions ")
+#             if (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S > 0.99) and (phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S < 1):
+#                 print("phi_tot = ", phi_Au + phi_Ab + phi_Bu + phi_Bb + phi_P + phi_S)
+#                 print("MU: ", (mu_A, mu_B))
+#                 print("PHI_B^(U): ", phi_Bu)
+#     return muA_mat, muB_mat, sA_mat, sB_mat, fA_mat, fB_mat, phi_Au_mat, phi_Bu_mat, phi_Ab_mat, phi_Bb_mat, 
 
 
 
