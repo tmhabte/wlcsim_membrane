@@ -64,7 +64,13 @@ def calc_mu_phi_bind(psol, ):
     phi_Bb_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
     mu_A_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
     mu_B_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
+    fA_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
+    fB_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
+    f0_mat = np.zeros((len(phi_a_i),len(phi_b_i))) - 1
+    sA_mat = np.zeros((len(phi_a_i),len(phi_b_i), M)) - 1
+    sB_mat = np.zeros((len(phi_a_i),len(phi_b_i), M)) - 1
 
+    chi_AB = chi_AB / (N_P * phi_p_f)
 
     for i in range(len(phi_a_i)):
         for j in range(len(phi_b_i)):
@@ -121,9 +127,14 @@ def calc_mu_phi_bind(psol, ):
             phi_Bb_mat[i,j] = phi_Bb
             mu_A_mat[i,j] = mu_A
             mu_B_mat[i,j] = mu_B 
+            fA_mat[i,j] = fA
+            fB_mat[i,j] = fB
+            f0_mat[i,j] = f0 
+            sA_mat[i,j] = s_Aj
+            sB_mat[i,j] = s_Bj
 
     return phi_p_f, phi_a_f, phi_b_f, phi_s, phi_Au_mat, phi_Ab_mat, \
-    phi_Bu_mat, phi_Bb_mat, mu_A_mat, mu_B_mat
+    phi_Bu_mat, phi_Bb_mat, mu_A_mat, mu_B_mat, fA_mat, fB_mat, f0_mat, sA_mat, sB_mat
 
 
 def residuals(x,y, sA, sB, phiA_tot, phiB_tot, C_A, C_B):
