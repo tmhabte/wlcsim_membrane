@@ -342,6 +342,36 @@ def S_AAAP43(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_a3, j_p, tol=1e-12):
 
     return backbone * pair_val * singleA3
 
+def S_AAAP43_2(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_a3, j_p, tol=1e-12):
+    """
+    Case (4,3): A-P pair at j_pair (k1,k2), single A at j_a3 (k3), single A at j_p (k4).
+    """
+    q_pair = k2 + k3 + k4  
+    x_pair = (bA**2 / 6.0) * (q_pair**2)
+
+    # # pair nested integral (2-point)
+    # if np.isclose(x_pair, 0.0, atol=tol):
+    #     pair_val = N_A**2 / 2.0
+    # else:
+    #     pair_val = (-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
+
+    # single A at pair
+    pair_val = _f1_stable(x_pair, N_A)
+
+    # single A (third A)
+    xA3 = (bA**2 / 6.0) * (k3**2)
+    singleA3 = _f1_stable(xA3, N_A)
+
+    # single A (fourth A)
+    xA4 = (bA**2 / 6.0) * (k4**2)
+    singleA4 = _f1_stable(xA4, N_A)
+
+    # backbone prefactors using D and minimal mapping: connect pair to P and to A3
+    D = (bP**2 / 6.0) * (N_P / (M - 1.0))
+    backbone = np.exp(- D * (k4**2) * abs(j_pair - j_p) - D * (k3**2) * abs(j_pair - j_a3))
+
+    return backbone * pair_val * singleA3 * singleA4
+
 def S_AAAP44(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j1, j2, j3, j4, tol=1e-12):
     """
     Case (4,4): all points on distinct binders/monomers: factorized singles times backbone prefactor.
@@ -436,17 +466,41 @@ def S_AAPP43_pairA(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_p1, j_p2, tol=
     return backbone * pair_val
 
 
+# def S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
+#     """
+#     Variant where the pair is the two P points (P1,P2) on the same backbone index j_pairP,
+#     and the two A points are singles attached at j_a1 and j_a2.
+#     """
+#     # nested P integral
+#     y1 = (bP**2 / 6.0) * (k3**2)
+#     if np.isclose(y1, 0.0, atol=tol):
+#         pairP_val = N_P**2 / 2.0
+#     else:
+#         pairP_val = (-1.0 + np.exp(-y1 * N_P) + y1 * N_P) / (y1**2)
+
+#     # singles: A1 and A2 single integrals
+#     xA1 = (bA**2 / 6.0) * (k1**2)
+#     xA2 = (bA**2 / 6.0) * (k2**2)
+#     singleA1 = _f1_stable(xA1, N_A)
+#     singleA2 = _f1_stable(xA2, N_A)
+
+#     # backbone prefactors connecting P-pair site to each A single
+#     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
+#     backbone = np.exp(- D * (k1**2) * abs(j_pairP - j_a1) - D * (k2**2) * abs(j_pairP - j_a2))
+
+#     return backbone * pairP_val * singleA1 * singleA2
+
 def S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
     """
     Variant where the pair is the two P points (P1,P2) on the same backbone index j_pairP,
     and the two A points are singles attached at j_a1 and j_a2.
     """
-    # nested P integral
-    y1 = (bP**2 / 6.0) * (k3**2)
-    if np.isclose(y1, 0.0, atol=tol):
-        pairP_val = N_P**2 / 2.0
-    else:
-        pairP_val = (-1.0 + np.exp(-y1 * N_P) + y1 * N_P) / (y1**2)
+    # # nested P integral
+    # y1 = (bP**2 / 6.0) * (k3**2)
+    # if np.isclose(y1, 0.0, atol=tol):
+    #     pairP_val = N_P**2 / 2.0
+    # else:
+    #     pairP_val = (-1.0 + np.exp(-y1 * N_P) + y1 * N_P) / (y1**2)
 
     # singles: A1 and A2 single integrals
     xA1 = (bA**2 / 6.0) * (k1**2)
@@ -458,11 +512,12 @@ def S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol
     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
     backbone = np.exp(- D * (k1**2) * abs(j_pairP - j_a1) - D * (k2**2) * abs(j_pairP - j_a2))
 
-    return backbone * pairP_val * singleA1 * singleA2
+    return backbone  * singleA1 * singleA2
 
 def S_AAPP43(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
-    return S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12)\
-    +  S_AAPP43_pairA(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12)
+    return S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12)
+def S_AAPP43_2(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
+    return S_AAPP43_pairA(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12)
 # -------------------------------
 # I^(4,4): all four on distinct monomers (fully factorized)
 # -------------------------------
@@ -514,11 +569,12 @@ def S_APPP42(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, jA, jP):
 
 def S_APPP43(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, j1, j2, j3):
 
-    aA = (bA**2 / 6.0) * kA**2
-    if np.isclose(aA, 0.0, atol=1e-14):
-        FA = N_A
-    else:
-        FA = (1.0 - np.exp(-aA * N_A)) / aA
+    # aA = (bA**2 / 6.0) * kA**2
+    # if np.isclose(aA, 0.0, atol=1e-14):
+    #     FA = N_A
+    # else:
+    #     FA = (1.0 - np.exp(-aA * N_A)) / aA
+    FA = _f1_stable((bA**2 / 6.0) * (kA**2), N_A)
 
     delJ1 = (N_P/(6.0*(M-1))) * bP**2 * kP1**2 * (j2 - j1)
     delJ2 = (N_P/(6.0*(M-1))) * bP**2 * kP2**2 * (j3 - j2)
@@ -577,6 +633,8 @@ def S_AAPA43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p,j_a4,tol=1e-12):
     return backbone * pair_val * singleA4
 
 
+
+
 def S_APPA42(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_trip,j_iso,tol=1e-12):
     x_t = (bA**2 / 6.0) * ((k2 + k3)**2)  # q_t  
     single_trip = _f1_stable(x_t, N_A)
@@ -591,11 +649,11 @@ def S_APPA42(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_trip,j_iso,tol=1e-12):
 
 def S_APPA43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pairP,j_a1,j_a4,tol=1e-12):
     # nested P pair
-    y = (bP**2 / 6.0) * (k3**2)
-    if np.isclose(y, 0.0, atol=tol):
-        pair_val = N_P**2 / 2.0
-    else:
-        pair_val = (-1.0 + np.exp(-y * N_P) + y * N_P) / (y**2)
+    # y = (bP**2 / 6.0) * (k3**2)
+    # if np.isclose(y, 0.0, atol=tol):
+    #     pair_val = N_P**2 / 2.0
+    # else:
+    #     pair_val = (-1.0 + np.exp(-y * N_P) + y * N_P) / (y**2)
 
     # singles A
     s1 = _f1_stable((bA**2/6.0)*(k1**2), N_A)
@@ -605,10 +663,40 @@ def S_APPA43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pairP,j_a1,j_a4,tol=1e-12):
     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
     backbone = np.exp(- D * (k1**2) * abs(j_pairP - j_a1) - D * (k4**2) * abs(j_pairP - j_a4))
 
-    return backbone * pair_val * s1 * s4
+    return backbone  * s1 * s4 #* pair_val
 
 def S_APPA43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pairP,j_a1,j_a4,tol=1e-12):
     return S_APPA43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pairP,j_a1,j_a4)
+
+def S_APPA43_2(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_a3, j_p, tol=1e-12):
+    """
+    Case (4,3): A-P pair at j_pair (k1,k2), single A at j_a3 (k3), single P at j_p (k4).
+    """
+    q_pair = k2 + k3 + k4  
+    x_pair = (bA**2 / 6.0) * (q_pair**2)
+
+    # # pair nested integral (2-point)
+    # if np.isclose(x_pair, 0.0, atol=tol):
+    #     pair_val = N_A**2 / 2.0
+    # else:
+    #     pair_val = (-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
+
+    # single A at pair
+    pair_val = _f1_stable(x_pair, N_A)
+
+    # single A (third A)
+    xA3 = (bA**2 / 6.0) * (k3**2)
+    singleA3 = _f1_stable(xA3, N_A)
+
+    # # single A (fourth A)
+    # xA4 = (bA**2 / 6.0) * (k4**2)
+    # singleA4 = _f1_stable(xA4, N_A)
+
+    # backbone prefactors using D and minimal mapping: connect pair to P and to A3
+    D = (bP**2 / 6.0) * (N_P / (M - 1.0))
+    backbone = np.exp(- D * (k4**2) * abs(j_pair - j_p) - D * (k3**2) * abs(j_pair - j_a3))
+
+    return backbone * pair_val * singleA3 #* singleA4
 
 def S_APPA44(k1,k2,k3,k4,bA,bP,N_A,N_P,M,jA1,jP2,jP3,jA4,tol=1e-12):
     # singles (A1 and A4)
@@ -642,24 +730,25 @@ def S_PAAP43_pairA(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4,tol=1e-12):
     return backbone * pair
 
 def S_PAAP43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pairP,j_a2,j_a3,tol=1e-12):
-    # nested P pair: choose   q for P-segment (e.g. qP=k4 if P4 to right)
+    #  AP pair: choose   q for P-segment (e.g. qP=k4 if P4 to right)
     y = (bP**2 / 6.0) * (k4**2)
-    if np.isclose(y, 0.0, atol=tol):
-        pairP = N_P**2 / 2.0
-    else:
-        pairP = (-1.0 + np.exp(-y * N_P) + y * N_P) / (y**2)
+    # if np.isclose(y, 0.0, atol=tol):
+    #     pairP = N_P**2 / 2.0
+    # else:
+    #     pairP = (-1.0 + np.exp(-y * N_P) + y * N_P) / (y**2)
+    pairP = _f1_stable(y, N_A)
 
     singleA2 = _f1_stable((bA**2 / 6.0) * (k2**2), N_A)
-    singleA3 = _f1_stable((bA**2 / 6.0) * (k3**2), N_A)
+    # singleA3 = _f1_stable((bA**2 / 6.0) * (k3**2), N_A)
 
     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
     backbone = np.exp(- D * (k2**2) * abs(j_pairP - j_a2) - D * (k3**2) * abs(j_pairP - j_a3))
 
-    return backbone * pairP * singleA2 * singleA3
+    return backbone * pairP * singleA2 #* singleA3
 
-def S_PAAP43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4,tol=1e-12):
-    return S_PAAP43_pairA(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4) \
-    + S_PAAP43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4)
+# def S_PAAP43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4,tol=1e-12):
+#     return S_PAAP43_pairA(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4) \
+#     + 2*S_PAAP43_pairP(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p1,j_p4)
 
 def S_PAAP44(k1,k2,k3,k4,bA,bP,N_A,N_P,M,jP1,jA2,jA3,jP4,tol=1e-12):
     s2 = _f1_stable((bA**2/6.0)*(k2**2), N_A)
