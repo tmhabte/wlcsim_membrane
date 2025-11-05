@@ -249,7 +249,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         S3_arr[1,1,1] += np.sum(sA * S_AAA31(kA, kB, b_A, N_A))
         I = S_AAA32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
         corr1 = sAsAsA / sA[ordered_js[0]]   # careful: ordered_js[0] indexes into sA
-        S3_arr[1,1,1] += masked_sum(corr1, I, index1)
+        S3_arr[1,1,1] += masked_sum(corr1, 2*I, index1)
         I = S_AAA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
                     ordered_js[0], ordered_js[1], ordered_js[2])
         corr2 = sAsAsA
@@ -278,6 +278,10 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         I = S_AAP32(kA, kB, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
         corr = sAsAsP / sA[ordered_js[0]]
         S3_arr[1,1,0] += masked_sum(corr, I, index1)
+        #already handled below
+        # I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
+        # corr = sAsAsP
+        # S3_arr[1,1,0] += masked_sum(corr, I, index1)
         I = S_AAP33(kA, kB, -kA-kB, b_A, b_A, b_P, N_A, N_P, M,
                     ordered_js[0], ordered_js[1], ordered_js[2])
         S3_arr[1,1,0] += masked_sum(sAsAsP, I, index2)
@@ -287,7 +291,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         S3_arr[1,0,1] += np.sum(sA * S_AAP31(kA, kB, b_A, N_A))
         I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
         corr = sAsAsP
-        S3_arr[1,0,1] += masked_sum(corr, I, index1)
+        S3_arr[1,0,1] += masked_sum(corr, 2*I, index1)
         # handling As on different monomers
         S3_arr[1,1,0] += masked_sum(corr, I, index1)
         I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
@@ -299,7 +303,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         S3_arr[2,2,2] += np.sum(sB * S_AAA31(kA, kB, b_B, N_B))
         I = S_AAA32(kA, kB, b_B, b_P, N_B, N_P, M, ordered_js[0], ordered_js[-1])
         corr = sBsBsB / sB[ordered_js[0]]
-        S3_arr[2,2,2] += masked_sum(corr, I, index1)
+        S3_arr[2,2,2] += masked_sum(corr, 2*I, index1)
         I = S_AAA33(kA, kB, -kA-kB, b_B, b_P, N_B, N_P, M,
                     ordered_js[0], ordered_js[1], ordered_js[2])
         S3_arr[2,2,2] += masked_sum(sBsBsB, I, index2)
@@ -319,7 +323,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         S3_arr[2,0,2] += np.sum(sB * S_AAP31(kA, kB, b_B, N_B))
         I = S_APA32(kA, kB, b_B, b_B, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
         corr = sBsBsP
-        S3_arr[2,0,2] += masked_sum(corr, I, index1)
+        S3_arr[2,0,2] += masked_sum(corr, 2*I, index1)
         # also add to BBP
         S3_arr[2,2,0] += masked_sum(corr, I, index1)
         I = S_APA33(kA, kB, -kA-kB, b_B, b_P, N_A, N_P, M,
@@ -339,7 +343,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
         # BPA -> [2,0,1]
         I = S_APA32(kA, kB, b_A, b_A, b_P, N_A, N_P, M, ordered_js[0], ordered_js[-1])
         corr = sAsBsP
-        S3_arr[2,0,1] += masked_sum(corr, I, index1)
+        S3_arr[2,0,1] += masked_sum(corr, 2*I, index1)
         I = S_APA33(kA, kB, -kA-kB, b_A, b_P, N_A, N_P, M,
                     ordered_js[0], ordered_js[1], ordered_js[2])
         S3_arr[2,0,1] += masked_sum(sAsBsP, I, index2)
