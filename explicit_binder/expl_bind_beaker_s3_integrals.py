@@ -10,7 +10,7 @@ def S_AAA31(k_alp, k_bet, b, N_A):
         exp[-x1 (n3-n2) - x2 (n2-n1)]
     """
     x1 = (b**2/6) * k_alp**2
-    x2 = (b**2/6) * k_bet**2
+    x2 = (b**2/6) * k_bet**2 
 
     # Handle x1 ≈ x2 with a tolerance
     if np.isclose(x1, x2, atol=1e-12):
@@ -118,27 +118,46 @@ def S_AAA33(k1, k2, k3, bA, bP, N_A, N_P, M, j1, j2, j3):
 
 import numpy as np
 
+# def S_AAP31(k_alpha, k_beta, bA, N_A):
+#     """
+#     I = int_0^N_A dn3 int_0^n3 dn2 exp[-(1/6)bA^2 k_alpha^2 (n3-n2) - (1/6)bA^2 k_beta^2 n2]
+#     """
+#     a_alpha = (bA**2 / 6.0) * k_alpha**2
+#     a_beta  = (bA**2 / 6.0) * k_beta**2
+    
+#     def f(a):
+#         if np.isclose(a, 0.0, atol=1e-14):
+#             return N_A
+#         return (1 - np.exp(-a * N_A)) / a
+    
+#     if np.isclose(a_alpha, a_beta, atol=1e-14):
+#         # limit case: a_alpha = a_beta
+#         # print("31:", 0.5 * f(a_alpha) * N_A)
+#         return 0.5 * f(a_alpha) * N_A
+#     else:
+#         # print((f(a_beta) - f(a_alpha)) / (a_alpha - a_beta))
+#         return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
+
+
 def S_AAP31(k_alpha, k_beta, bA, N_A):
     """
+    just a 2 point corr
     I = int_0^N_A dn3 int_0^n3 dn2 exp[-(1/6)bA^2 k_alpha^2 (n3-n2) - (1/6)bA^2 k_beta^2 n2]
     """
     a_alpha = (bA**2 / 6.0) * k_alpha**2
-    a_beta  = (bA**2 / 6.0) * k_beta**2
+    # a_beta  = (bA**2 / 6.0) * k_beta**2
     
     def f(a):
         if np.isclose(a, 0.0, atol=1e-14):
             return N_A
         return (1 - np.exp(-a * N_A)) / a
     
-    if np.isclose(a_alpha, a_beta, atol=1e-14):
-        # limit case: a_alpha = a_beta
-        # print("31:", 0.5 * f(a_alpha) * N_A)
-        return 0.5 * f(a_alpha) * N_A
-    else:
-        # print((f(a_beta) - f(a_alpha)) / (a_alpha - a_beta))
-        return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
+    return (-1.0 + np.exp(-a_alpha * N_A) + a_alpha * N_A) / (a_alpha**2)
 
-import numpy as np
+    # else:
+    #     # print((f(a_beta) - f(a_alpha)) / (a_alpha - a_beta))
+    #     return (f(a_beta) - f(a_alpha)) / (a_alpha - a_beta)
+# import numpy as np
 
 # def S_AAP32(k2, k3, bA, bP, N_A, N_P, n_i):
 # def S_AAP32(k2, k3, bA, bP, N_A, N_P, M, j3, j1):

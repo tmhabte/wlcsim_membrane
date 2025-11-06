@@ -159,7 +159,7 @@ def S_AAAA43(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j3, j4, tol=1e-12):
     if np.isclose(x_pair, 0.0, atol=tol):
         pair_val = N_A**2 / 2.0
     else:
-        pair_val = (-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
+        pair_val = 2*(-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
 
     # singles
     x3 = (bA**2 / 6.0) * (k3**2)
@@ -402,37 +402,76 @@ import numpy as np
 #         return (L**2)/2.0 - (x*L**3)/6.0 + (x**2 * L**4)/24.0
 #     return (1.0 - np.exp(-x*L)*(1.0 + x*L)) / (x**2)
 
+# TODO: FIX should just be two point correlation?  ANSWER: no
+# more complicated- the normalization that canceled the first leg no longer applies
+# when mixing backbone and binder
+# distinction between equal ks and unequal
+# def S_AAPP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=1e-12):
+#     q_alpha = k2 + k3 + k4
+#     q_beta  = k3 + k4
+#     x_alpha = (bA**2 / 6.0) * (q_alpha**2)
+#     x_beta  = (bA**2 / 6.0) * (q_beta**2)
+#     N = N_A
+
+#     # small x limits
+#     if abs(x_alpha) < tol and abs(x_beta) < tol:
+#         return N**2 / 2.0  # integral of triangle area
+
+#     # equal-case
+#     if np.isclose(x_alpha, x_beta, atol=tol):
+#         if abs(x_alpha) < tol:
+#             return N**2 / 2.0
+#         # limit expression (stable)
+#         return ( (1.0 - np.exp(-x_alpha*N) - x_alpha*N*np.exp(-x_alpha*N)) / (x_alpha**2) )
+
+#     # general distinct case
+#     f_alpha = _f1_stable(x_alpha, N)
+#     f_beta  = _f1_stable(x_beta, N)
+#     return (f_beta - f_alpha) / (x_alpha - x_beta)
 
 def S_AAPP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=1e-12):
-    q_alpha = k2 + k3 + k4
-    q_beta  = k3 + k4
+    q_alpha = k1#k2 + k3 + k4
+    # q_beta  = k3 + k4
     x_alpha = (bA**2 / 6.0) * (q_alpha**2)
-    x_beta  = (bA**2 / 6.0) * (q_beta**2)
+    # x_beta  = (bA**2 / 6.0) * (q_beta**2)
     N = N_A
 
     # small x limits
-    if abs(x_alpha) < tol and abs(x_beta) < tol:
+    if abs(x_alpha) < tol:# and abs(x_beta) < tol:
         return N**2 / 2.0  # integral of triangle area
 
     # equal-case
-    if np.isclose(x_alpha, x_beta, atol=tol):
-        if abs(x_alpha) < tol:
-            return N**2 / 2.0
+    else:
         # limit expression (stable)
         return ( (1.0 - np.exp(-x_alpha*N) - x_alpha*N*np.exp(-x_alpha*N)) / (x_alpha**2) )
 
     # general distinct case
-    f_alpha = _f1_stable(x_alpha, N)
-    f_beta  = _f1_stable(x_beta, N)
+    # f_alpha = _f1_stable(x_alpha, N)
+    # f_beta  = _f1_stable(x_beta, N)
+    # return (f_beta - f_alpha) / (x_alpha - x_beta)
 
-    return (f_beta - f_alpha) / (x_alpha - x_beta)
+# def S_AAPP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=1e-12):
+#     q_alpha = k1# k2 + k3 + k4
+#     # q_beta  = k3 + k4
+#     x_alpha = (bA**2 / 6.0) * (q_alpha**2)
+#     # x_beta  = (bA**2 / 6.0) * (q_beta**2)
+#     N = N_A
+
+#     # small x limits
+#     if abs(x_alpha) < tol:# and abs(x_beta) < tol:
+#         return N**2 / 2.0  # integral of triangle area
+
+#     # equal-case
+#     else:
+#         # limit expression (stable)
+#         return ( (1.0 - np.exp(-x_alpha*N) - x_alpha*N*np.exp(-x_alpha*N)) / (x_alpha**2) )
 
 
 # -------------------------------
 # I^(4,2): 3+1 partition (triple A+P at j_trip, isolated P at j_iso)
 # -------------------------------
 def S_AAPP42(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_trip, j_iso, tol=1e-12):
-
+    # AAP triple corr, then single P corr
     # triple A-block reduces to two-A nested integral (A positions 1,2)
     I_Ablock = S_AAPP41(k1, k2, k3, k4, bA, bP, N_A, N_P, M, tol=tol)
 
@@ -451,8 +490,8 @@ def S_AAPP43_pairA(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_p1, j_p2, tol=
     q_pair = k2 + k3 + k4
     x_pair = (bA**2 / 6.0) * (q_pair**2)
     N = N_A
-
-    # pair nested integral (A pair)
+    # true 2 point correlation
+    # pair nested integral (A pair)- equal x case
     if np.isclose(x_pair, 0.0, atol=tol):
         pair_val = N**2 / 2.0
     else:
@@ -465,30 +504,6 @@ def S_AAPP43_pairA(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pair, j_p1, j_p2, tol=
 
     return backbone * pair_val
 
-
-# def S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
-#     """
-#     Variant where the pair is the two P points (P1,P2) on the same backbone index j_pairP,
-#     and the two A points are singles attached at j_a1 and j_a2.
-#     """
-#     # nested P integral
-#     y1 = (bP**2 / 6.0) * (k3**2)
-#     if np.isclose(y1, 0.0, atol=tol):
-#         pairP_val = N_P**2 / 2.0
-#     else:
-#         pairP_val = (-1.0 + np.exp(-y1 * N_P) + y1 * N_P) / (y1**2)
-
-#     # singles: A1 and A2 single integrals
-#     xA1 = (bA**2 / 6.0) * (k1**2)
-#     xA2 = (bA**2 / 6.0) * (k2**2)
-#     singleA1 = _f1_stable(xA1, N_A)
-#     singleA2 = _f1_stable(xA2, N_A)
-
-#     # backbone prefactors connecting P-pair site to each A single
-#     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
-#     backbone = np.exp(- D * (k1**2) * abs(j_pairP - j_a1) - D * (k2**2) * abs(j_pairP - j_a2))
-
-#     return backbone * pairP_val * singleA1 * singleA2
 
 def S_AAPP43_pairP(k1, k2, k3, k4, bA, bP, N_A, N_P, M, j_pairP, j_a1, j_a2, tol=1e-12):
     """
@@ -553,28 +568,31 @@ import numpy as np
 
 def S_APPP42(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, jA, jP):
 
+    # backbone
     kPsum = kP1+ kP2+ kP3
-    aA = (bA**2 / 6.0) * kA**2
+    xA = (bA**2 / 6.0) * kA**2
     deltaJP = jP - jA
     expP = np.exp(-(N_P / (6.0*(M-1))) * bP**2 * kPsum**2 * deltaJP)
 
-    # A integral
-    if np.isclose(aA, 0.0, atol=1e-14):
-        FA = N_A
-    else:
-        FA = (1.0 - np.exp(-aA * N_A)) / aA
-
+    # # TODO: FIX A integral should be f1_stable?- YES, but equivalent
+    # # A integral
+    # if np.isclose(aA, 0.0, atol=1e-14):
+    #     FA = N_A
+    # else:
+    #     FA = (1.0 - np.exp(-aA * N_A)) / aA
+    FA = _f1_stable(xA, N_A)
     return FA * expP
 
 
 def S_APPP43(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, j1, j2, j3):
-
+    
     # aA = (bA**2 / 6.0) * kA**2
     # if np.isclose(aA, 0.0, atol=1e-14):
     #     FA = N_A
     # else:
     #     FA = (1.0 - np.exp(-aA * N_A)) / aA
-    FA = _f1_stable((bA**2 / 6.0) * (kA**2), N_A)
+    xA = (bA**2 / 6.0) * kA**2
+    FA = _f1_stable(xA, N_A)
 
     delJ1 = (N_P/(6.0*(M-1))) * bP**2 * kP1**2 * (j2 - j1)
     delJ2 = (N_P/(6.0*(M-1))) * bP**2 * kP2**2 * (j3 - j2)
@@ -584,32 +602,43 @@ def S_APPP43(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, j1, j2, j3):
 
 def S_APPP44(kA, kP1, kP2, kP3, bA, bP, N_A, N_P, M, j1, j2, j3, j4):
 
-    aA = (bA**2 / 6.0) * kA**2
-    if np.isclose(aA, 0.0, atol=1e-14):
-        FA = N_A
-    else:
-        FA = (1.0 - np.exp(-aA * N_A)) / aA
+    xA = (bA**2 / 6.0) * kA**2
+    # if np.isclose(aA, 0.0, atol=1e-14):
+    #     FA = N_A
+    # else:
+    #     FA = (1.0 - np.exp(-aA * N_A)) / aA
+    FA = _f1_stable(xA, N_A)
 
     delJ = (N_P/(6.0*(M-1))) * bP**2 * (
         kP1**2 * (j2 - j1) + kP2**2 * (j3 - j2) + kP3**2 * (j4 - j3)
     )
     return FA * np.exp(-delJ)
 
+def twoA_nested(a_alpha,a_beta,N, tol=1e-12):
+    if np.isclose(a_alpha,a_beta,atol=tol):
+        return (-1.0 + np.exp(-a_alpha * N) + a_alpha * N) / (a_alpha**2)
+        # f = _f1_stable(a_alpha,N)
+        # return 0.5 * f * N
+    f_alpha = _f1_stable(a_alpha,N)
+    f_beta  = _f1_stable(a_beta,N)
+    return (f_beta - f_alpha) / (a_alpha - a_beta)
 
 def S_AAPA42_AAPtriple_Aisolated(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_trip,j_iso,tol=1e-12):
     # two-A nested block (A1,A2 with anchored P3 inside triple)
     a_alpha = (bA**2 / 6.0) * ( (k2 + k3)**2 )
     a_beta  = (bA**2 / 6.0) * ( k3**2 )
     # use same stable routine as S_AAP31 for two-A nested integral
-    def twoA_nested(a_alpha,a_beta,N):
-        if np.isclose(a_alpha,a_beta,atol=tol):
-            f = _f1_stable(a_alpha,N)
-            return 0.5 * f * N
-        f_alpha = _f1_stable(a_alpha,N)
-        f_beta  = _f1_stable(a_beta,N)
-        return (f_beta - f_alpha) / (a_alpha - a_beta)
 
-    I_twoA = twoA_nested(a_alpha,a_beta,N_A)
+    #TODO: FIX this is another instance of using subtraction to define 2 point corr
+    # actually this is right. combining binder and backbone, so need explicit connection
+    # ACTUALLy we are just combinig a two point with a single point w backbone
+    x_pair = a_beta
+    if np.isclose(x_pair,0.0,atol=tol):
+        I_twoA = N_A**2 / 2.0
+    else:
+        I_twoA = (-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
+
+    # I_twoA = twoA_nested(a_alpha,a_beta,N_A)
     singleA4 = _f1_stable((bA**2 / 6.0) * (k4**2), N_A)
     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
     backbone = np.exp(- D * (k4**2) * abs(j_iso - j_trip))
@@ -620,6 +649,8 @@ def S_AAPA43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p,j_a4,tol=1e-12):
     # pair integral (A1,A2)
     q_pair = k2 + k3 + k4  #   mapping when pair are earliest
     x_pair = (bA**2 / 6.0) * (q_pair**2)
+    #TODO: FIX this is using pair val. 
+    # it should use pair val!!
     if np.isclose(x_pair,0.0,atol=tol):
         pair_val = N_A**2 / 2.0
     else:
@@ -633,7 +664,26 @@ def S_AAPA43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p,j_a4,tol=1e-12):
     return backbone * pair_val * singleA4
 
 
+# def S_AAPA43(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_pair,j_p,j_a4,tol=1e-12):
+#     # pair integral (A1,A2)
+#     q_pair = k2 + k1 #   mapping when pair are earliest
+#     q_pair2 = k1
+#     x_pair = (bA**2 / 6.0) * (q_pair**2)
+#     x_pair2 = (bA**2 / 6.0) * (q_pair2**2)
 
+#     # #TODO: FIX this is using pair val
+#     # if np.isclose(x_pair,0.0,atol=tol):
+#     #     pair_val = N_A**2 / 2.0
+#     # else:
+#     #     pair_val = (-1.0 + np.exp(-x_pair * N_A) + x_pair * N_A) / (x_pair**2)
+#     pair_val = twoA_nested(x_pair,x_pair2,N_A, tol=1e-12)
+    
+#     singleA4 = _f1_stable((bA**2 / 6.0) * (k4**2), N_A)
+
+#     D = (bP**2 / 6.0) * (N_P / (M - 1.0))
+#     backbone = np.exp(- D * (k3**2) * abs(j_pair - j_p) - D * (k4**2) * abs(j_pair - j_a4))
+
+#     return backbone * pair_val * singleA4
 
 def S_APPA42(k1,k2,k3,k4,bA,bP,N_A,N_P,M,j_trip,j_iso,tol=1e-12):
     x_t = (bA**2 / 6.0) * ((k2 + k3)**2)  # q_t  

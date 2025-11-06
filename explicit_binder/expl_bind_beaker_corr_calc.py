@@ -205,17 +205,17 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
     #prefactors. assuming N_A = N_B
 
     #ppp: np N_p^3 / V_sys = N_P^2 phi_P
-    ppp_pre = N_P**2 * phi_p
+    ppp_pre = N_P**2 * phi_p / N_P**3 # divide bc did not include N factors in x definitons in integrals
     #ppa: np N_p^2 N_A / V_sys = N_P N_A phi_P
-    ppa_pre = N_P * N_A * phi_p
+    ppa_pre = N_P * N_A * phi_p / (N_P**2 * N_A) 
     #paa: np N_p N_A^2 / V_sys = N_A^2 phi_P
-    paa_pre = N_A**2 * phi_p
+    paa_pre = N_A**2 * phi_p  / (N_P * N_A**2) 
     # BOUND aaa: np N_A^3 / V_sys = np N_A^3 N_P / (v_sys N_P) = N_A^3 phi_P / N_P
-    aaa_pre = (N_A**3 * phi_p) / N_P
+    aaa_pre = (N_A**3 * phi_p) / (N_P * N_A**3)
 
     # UNBOUND
-    aaaU_pre = phi_Au * N_A**3
-    bbbU_pre = phi_Bu * N_B**3
+    aaaU_pre = phi_Au * N_A**3 / (N_A**3)
+    bbbU_pre = phi_Bu * N_B**3 / (N_B**3)
 
     S3_arr = np.zeros((4, 4, 4), dtype=float)
     S3_Au = 0
@@ -523,20 +523,20 @@ def calc_sf4(psol, corrs, phis, k1, k2, k3, k123):
     #prefactors. assuming N_A = N_B
 
     #pppp: np N_p^4 / V_sys = N_P^3 phi_P
-    pppp_pre = N_P**3 * phi_p
+    pppp_pre = N_P**3 * phi_p / N_P**4 # x definition doesnt have N facotrs- and for P need this regardless
     #pppa: np N_p^3 N_A / V_sys = N_P^2 N_A phi_P
-    pppa_pre = N_P**2 * N_A * phi_p
+    pppa_pre = N_P**2 * N_A * phi_p / (N_P**3 * N_A)
     #ppaa: np N_p^2 N_A^2 / V_sys = N_A^2 N_P phi_P
-    ppaa_pre = N_P * N_A**2 * phi_p
+    ppaa_pre = N_P * N_A**2 * phi_p / (N_P**2 * N_A**2)
     #paaa: np N_p N_A^3 / V_sys = N_A^3 phi_P
-    paaa_pre = N_A**3 * phi_p
+    paaa_pre = N_A**3 * phi_p / (N_A**3 * N_P)
 
     # BOUND aaaa: np N_A^4 / V_sys = np N_A^4 N_P / (v_sys N_P) = N_A^4 phi_P / N_P
-    aaaa_pre = (N_A**4 * phi_p) / N_P
+    aaaa_pre = (N_A**4 * phi_p) / (N_P * N_A**4)
 
     # UNBOUND
-    aaaaU_pre = phi_Au * N_A**4
-    bbbbU_pre = phi_Bu * N_B**4
+    aaaaU_pre = phi_Au * N_A**4 / N_A**4
+    bbbbU_pre = phi_Bu * N_B**4 / N_A**4
 
     S4_arr = np.zeros((4,4,4,4)) 
     S4_Au = 0
