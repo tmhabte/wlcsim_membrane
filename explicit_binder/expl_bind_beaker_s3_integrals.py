@@ -147,11 +147,12 @@ def S_AAP31(k_alpha, k_beta, bA, N_A):
     a_alpha = (bA**2 / 6.0) * k_alpha**2
     # a_beta  = (bA**2 / 6.0) * k_beta**2
     
-    def f(a):
-        if np.isclose(a, 0.0, atol=1e-14):
-            return N_A
-        return (1 - np.exp(-a * N_A)) / a
-    
+    # def f(a):
+    #     if np.isclose(a, 0.0, atol=1e-14):
+    #         return N_A
+    #     return (1 - np.exp(-a * N_A)) / a
+    if np.isclose(a_alpha, 0.0, atol=1e-12):
+        return N_A**2 / 2.0
     return (-1.0 + np.exp(-a_alpha * N_A) + a_alpha * N_A) / (a_alpha**2)
 
     # else:
