@@ -70,7 +70,7 @@ def calc_mu_phi_bind(psol, ):
     sA_mat = np.zeros((len(phi_a_i),len(phi_b_i), M)) - 1
     sB_mat = np.zeros((len(phi_a_i),len(phi_b_i), M)) - 1
 
-    chi_AB = chi_AB / (N_P * phi_p_f)
+    # chi_AB = chi_AB / (N_P * phi_p_f)
 
     for i in range(len(phi_a_i)):
         for j in range(len(phi_b_i)):

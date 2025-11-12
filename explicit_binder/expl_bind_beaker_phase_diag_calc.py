@@ -36,11 +36,12 @@ del_phi_a_i = 0.1
 phi_a_i = np.arange(0,1.01,del_phi_a_i)
 phi_b_i = np.arange(0,1.01,del_phi_a_i)
 print("del_phi_a_i: ", del_phi_a_i)
-chi_AB_phi_p_N = 20
+# chi_AB_phi_p_N = 20
+chi_AB = 0.009
 psol = Polymer_soln(n_bind, v_int, e_m, phi_p_i, phi_a_i, phi_b_i, V_p, V_A, V_B, poly_marks,\
-                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB_phi_p_N)
+                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB)
 
-ID_number = chi_AB_phi_p_N + phi_p_i + N_A + N_P + V_p + V_A + e_m[0] + M
+ID_number = chi_AB + phi_p_i + N_A + N_P + V_p + V_A + e_m[0] + M
 # psol = Polymer_soln(n_bind, v_int, e_m, phi_p, phi_s, \
 #                     poly_marks, v_s, v_p, v_A, v_B, N_P, N_A, N_B,
 #                     b_P, b_A, b_B, chi_AB)
@@ -52,14 +53,14 @@ phi_Bu_mat, phi_Bb_mat, mu_A_mat, mu_B_mat, fA_mat, fB_mat, f0_mat, sA_mat, sB_m
 params_dic = {"M":M, "e_m":e_m, "v_s=v_pv_A=v_B": v_s,\
               "N_P":N_P, "N_A = N_B":N_A, "b_P = b_A = b_B":b_P,\
               "Beaker V_P":V_p, "beaker V_A, V_B":V_A, "phi_p_i":phi_p_i, \
-              "phi_a_i=phi_b_i":phi_a_i, "chi_AB_phi_p_N": chi_AB_phi_p_N,\
+              "phi_a_i=phi_b_i":phi_a_i, "chi_AB": chi_AB,\
              "psol": psol, "phi_p_f":phi_p_f, "del_phi_a_i":del_phi_a_i, "ID_number": ID_number}
 
 print("N_P: ", N_P)
 print("N_A=N_B: ", N_A)
 print("phi_p_i: ", phi_p_i)
 print("phi_p_f: ", phi_p_f)
-print("chi_AB_phi_p_N: ", chi_AB_phi_p_N)
+print("chi_AB_phi_p_N: ", chi_AB)
 
 
 np.save("params_dic_ID="+str(ID_number), params_dic) 

@@ -8,10 +8,10 @@ def gamma2_chis(psol, s_bnd_A, s_bnd_B, phis, K):
     N_P = psol.N_P
     phi_p, phi_Au, phi_Bu, phi_s = phis
 
-    chi_AB = psol.chi_AB
-    chi_AB /= N_P * phi_p
+    chi_AB = psol.chi_AB # acutally chi_AB now # really chi_AB_phi_p_N
+    # chi_AB /= N_P * phi_p
 
-    chi_AP, chi_BP, chi_PS, chi_AS, chi_BS = np.zeros(5) # SET BY 
+    chi_AP, chi_BP, chi_PS, chi_AS, chi_BS = np.zeros(5) # SET BY mean field binidng calc 
 
     # print("vm=A=1 edits - M = N")
 
@@ -40,7 +40,6 @@ def gamma2_chis(psol, s_bnd_A, s_bnd_B, phis, K):
     S2_inv[3,0] += chi_PS
     S2_inv[3,1] += chi_AS
     S2_inv[3,2] += chi_BS
-
 
     T = np.array([[1,0,0], [0,1,0], [0,0,1], [-1,-1,-1]]) # S = - (P+A+B)    
 
@@ -111,8 +110,9 @@ def gamma4(psol, s_bnd_A, s_bnd_B, phis, Ks):
     K14 = np.linalg.norm(K1+K4)
 
     # [n_bind, v_int, Vol_int, e_m, rho_p, rho_s, poly_marks, M, mu_max, mu_min, del_mu, alpha, N, N_m, b] = chrom
-    phi_p = psol.phi_p
+    # phi_p = psol.phi_p
     # N = psol.N
+    
     corrs = [s_bnd_A, s_bnd_B]
 
     # print("vm=a=1")
