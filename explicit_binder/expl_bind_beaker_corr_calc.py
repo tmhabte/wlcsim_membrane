@@ -121,13 +121,31 @@ def calc_sf2(psol, corrs, phis, k):
     # constants: np from z_P; Ns from sf definiton, V_sys form E density
     # assume v_P = v_A = v_B
 
-    # MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
+    # OLD MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
     # AP: n_p N_A N_P / V_sys = N_A phi_p
     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
     # AuAu: phi_Au * N_A**2 / V_sys = ? can also try N_A**1
+    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
+    #       [0, 0, 0, S_ss]]
+    
+
+    # # # # same as above but introduce n_alpha^U to the AuAu along w saddle point result
+    # # # # AuAu = phi_Au * n_au * N_A**2 / V_sys = phi_Au**2 * N_A
+    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au**2*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu**2*N_B, 0],\
+    #       [0, 0, 0, S_ss]]
+
+
+    # TRULY, TRULY CORRECT!!! - apply sadle point result, but only to unbound sfs
+    # AP: n_p N_A N_P / V_sys = N_A phi_p
+    # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+    # AuAu: n_Au * N_A**2 / V_sys = phi_Au * N_A
     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
-          [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
-          [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
+          [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+          [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B, 0],\
           [0, 0, 0, S_ss]]
     
     return S2
@@ -203,7 +221,7 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
     case_arr  = [case1, case2, case3, case1_deg, case2_deg, case3_deg]
 
     #prefactors. assuming N_A = N_B
-
+    # EACH has a divide by N_alpha^3 bc did not include N factors in x definitons in integrals
     #ppp: np N_p^3 / V_sys = N_P^2 phi_P
     ppp_pre = N_P**2 * phi_p / N_P**3 # divide bc did not include N factors in x definitons in integrals
     #ppa: np N_p^2 N_A / V_sys = N_P N_A phi_P
@@ -214,8 +232,12 @@ def calc_sf3(psol, corrs, phis, k1, k2, k12):
     aaa_pre = (N_A**3 * phi_p) / (N_P * N_A**3)
 
     # UNBOUND
-    aaaU_pre = phi_Au * N_A**3 / (N_A**3)
-    bbbU_pre = phi_Bu * N_B**3 / (N_B**3)
+    # aaaU_pre = phi_Au * N_A**3 / (N_A**3)
+    # bbbU_pre = phi_Bu * N_B**3 / (N_B**3)
+    # same as above but introduce n_alpha^U to the AuAu along w saddle point result
+    # AuAu =  n_au * N_A**3 / V_sys = phi_Au * N_A**2 
+    aaaU_pre = phi_Au * N_A**2 / (N_A**3)
+    bbbU_pre = phi_Bu * N_B**2 / (N_B**3)
 
     S3_arr = np.zeros((4, 4, 4), dtype=float)
     S3_Au = 0
@@ -535,8 +557,12 @@ def calc_sf4(psol, corrs, phis, k1, k2, k3, k123):
     aaaa_pre = (N_A**4 * phi_p) / (N_P * N_A**4)
 
     # UNBOUND
-    aaaaU_pre = phi_Au * N_A**4 / N_A**4
-    bbbbU_pre = phi_Bu * N_B**4 / N_A**4
+    # aaaaU_pre = phi_Au * N_A**4 / N_A**4
+    # bbbbU_pre = phi_Bu * N_B**4 / N_A**4
+    # same as above but introduce n_alpha^U to the AuAu along w saddle point result
+    # AuAu = n_au * N_A**4 / V_sys = phi_Au**2 * N_A**3 
+    aaaaU_pre = phi_Au * N_A**3 / (N_A**4)
+    bbbbU_pre = phi_Bu * N_B**3 / (N_B**4)
 
     S4_arr = np.zeros((4,4,4,4)) 
     S4_Au = 0

@@ -1,24 +1,25 @@
 from expl_bind_beaker_util import *
 
-def binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B):
+def binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M):
     p_AmAb = p_markA * phi_Au*np.exp(e_A) #A marked A bound
     p_BmAb = p_markB * phi_Au #B marked A bound
     p_AmBb = p_markA * phi_Bu #A marked B bound
     p_BmBb = p_markB * phi_Bu*np.exp(e_B) #B marked B bound
     
+    # TODO- think this through
     q = 1 + p_AmAb + p_BmAb + p_AmBb + p_BmBb
-    s_Aj = (1*p_AmAb + 1*p_BmAb) / q
-    s_Bj = (1*p_AmBb + 1*p_BmBb) / q
+    s_Aj = bs_per_M*(1*p_AmAb + 1*p_BmAb) / q
+    s_Bj = bs_per_M*(1*p_AmBb + 1*p_BmBb) / q
     return s_Aj, s_Bj
 
-def calc_fas(s_bnd_A, s_bnd_B):
+def calc_fas(s_bnd_A, s_bnd_B, bs_per_M):
     # [sig_0, sig_A, sig_B, sig_AB] =  calc_sisjs(s_bnd_A, s_bnd_B) #[sig_0, sig_A, sig_B, sig_AB]
     sig_A = s_bnd_A
     sig_B = s_bnd_B
     sig_0 = 1 - s_bnd_A - s_bnd_B
 
-    f_a = np.sum(sig_A) / (np.sum(np.ones(len(s_bnd_A))))
-    f_b = np.sum(sig_B) / (np.sum(np.ones(len(s_bnd_A))))
+    f_a = np.sum(sig_A) / ((np.sum(np.ones(len(s_bnd_A))))*bs_per_M)
+    f_b = np.sum(sig_B) / ((np.sum(np.ones(len(s_bnd_A))))*bs_per_M)
     # f_ab = np.sum(sig_AB) / (np.sum(np.ones(len(s_bnd_A))))
     f_o = np.sum(sig_0) / (np.sum(np.ones(len(s_bnd_A))))
     return [f_a, f_b, f_o]
@@ -50,6 +51,8 @@ def calc_mu_phi_bind(psol, ):
     p_markA, p_markB = psol.poly_marks
     chi_AB = psol.chi_AB
     e_A, e_B = psol.e_m
+    bs_per_M = psol.bs_per_M
+
 
     phi_p_f = (V_p * phi_p_i) / (V_p + V_A + V_B)
 
@@ -74,6 +77,7 @@ def calc_mu_phi_bind(psol, ):
 
     for i in range(len(phi_a_i)):
         for j in range(len(phi_b_i)):
+            # print("--"*20)
             phiai = phi_a_i[i]
             phibi = phi_b_i[j]
 
@@ -87,13 +91,15 @@ def calc_mu_phi_bind(psol, ):
             phi_Au, phi_Bu = find_unbound(psol, phi_p_f, phiaf, phibf)
             # phi_Ab = phiaf - phi_Au
             # phi_Bb = phibf - phi_Bu
-            # print("phiAu, Bu: ", phi_Au, phi_Bu)
-            s_Aj, s_Bj  = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B)
-            fA, fB, f0 = calc_fas(s_Aj, s_Bj)
+            # print("phiAb, Bb total conserved: ", phi_Ab, phi_Bb)
 
+            s_Aj, s_Bj  = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M)
+            fA, fB, f0 = calc_fas(s_Aj, s_Bj, bs_per_M)
 
-            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_p_f * np.sum(s_Aj)
-            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_p_f * np.sum(s_Bj)
+            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_p_f * np.sum(s_Aj) # * bs_per_M # put int s_Aj, s_Bj calc
+            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_p_f * np.sum(s_Bj) # * bs_per_M 
+            # print("phiAb, Bb from s_A, s_B: ", phi_Ab, phi_Bb)
+
             # print("phi_p_f", phi_p_f)
             # print("phiaf", phiaf)
             # print("phibf", phibf)
@@ -172,18 +178,19 @@ def find_unbound(psol, phi_p, phiA_tot, phiB_tot):
     pA, pB = psol.poly_marks
     chi_AB = psol.chi_AB
     epsA, epsB = psol.e_m
+    bs_per_M = psol.bs_per_M
 
 
-    C_A = (N_A*v_A)/(N_P*v_P)*phi_p 
-    C_B = (N_B*v_B)/(N_P*v_P)*phi_p
+    C_A = (N_A*v_A)/(N_P*v_P)*phi_p*bs_per_M
+    C_B = (N_B*v_B)/(N_P*v_P)*phi_p*bs_per_M
 
     # pA = pa_vec
     # pB = pb_vec 
     # epsA = e_m[0]
     # epsB = e_m[1]
 
-    sA = pA * np.exp(epsA) + pB
-    sB = pB * np.exp(epsB) + pA
+    sA = (pA * np.exp(epsA) + pB)
+    sB = (pB * np.exp(epsB) + pA)
 
 
     # initial guess
