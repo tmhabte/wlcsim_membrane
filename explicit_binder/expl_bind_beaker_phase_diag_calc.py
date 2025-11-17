@@ -10,6 +10,10 @@ e_m = np.array([1.52, 1.52]) #binding energy FOR F_BIND_ALT
 v_int =  np.array([[-4, 4], [4, -4]])
 # phi_s = 
 M = 50
+bs_per_M = 1
+print("M = ", M)
+print("bs_per_M = ", bs_per_M)
+
 nm = M
 pa_vec = np.arange(0, nm, 1) / (nm-1)
 pb_vec = 1-pa_vec
@@ -36,19 +40,22 @@ phi_p_i = 0.7
 del_phi_a_i = 0.1
 phi_a_i = np.arange(0,1.01,del_phi_a_i)
 phi_b_i = np.arange(0,1.01,del_phi_a_i)
-print("del_phi_a_i: ", del_phi_a_i)
+# print("del_phi_a_i: ", del_phi_a_i)
+
+# chi_AB_phi_p_N = 20
+# chi_AB = 0.009
+# chi_AB = 0.00857 * 1000 # point particle limit
+chi_AB = 10 / N_A # macromol good
 
 res_factor = 10
 print("res_factor: ", res_factor)
 phi_a_i_fine = np.arange(0.1, 1 + 0.1 / res_factor, 0.1 / res_factor)
 phi_b_i_fine = np.arange(0.1, 1 + 0.1 / res_factor, 0.1 / res_factor)
 
-# chi_AB_phi_p_N = 20
-# chi_AB = 0.009
-chi_AB = 0.00857 * 1000 # point particle limit
+
 
 psol = Polymer_soln(n_bind, v_int, e_m, phi_p_i, phi_a_i, phi_b_i, V_p, V_A, V_B, poly_marks,\
-                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB)
+                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB, bs_per_M)
 
 # psol = Polymer_soln(n_bind, v_int, e_m, phi_p, phi_s, \
 #                     poly_marks, v_s, v_p, v_A, v_B, N_P, N_A, N_B,
@@ -60,7 +67,7 @@ phi_p_f, phi_a_f, phi_b_f, phi_s, phi_Au_mat, phi_Ab_mat, \
 phi_Bu_mat, phi_Bb_mat, mu_A_mat, mu_B_mat, fA_mat, fB_mat, f0_mat, sA_mat, sB_mat = calc_mu_phi_bind(psol,)
 
 
-ID_number = chi_AB + phi_p_i + N_A + N_P + V_p + V_A + e_m[0] + M + res_factor*10
+ID_number = chi_AB + phi_p_i + N_A + N_P + V_p + V_A + e_m[0] + M + res_factor*10 + bs_per_M
 
 
 params_dic = {"M":M, "e_m":e_m, "v_s=v_pv_A=v_B": v_s,\
@@ -68,7 +75,7 @@ params_dic = {"M":M, "e_m":e_m, "v_s=v_pv_A=v_B": v_s,\
               "Beaker V_P":V_p, "beaker V_A, V_B":V_A, "phi_p_i":phi_p_i, \
               "phi_a_i=phi_b_i":phi_a_i, "chi_AB": chi_AB,\
              "psol": psol, "phi_p_f":phi_p_f, "del_phi_a_i":del_phi_a_i, \
-                "res_factor" : res_factor, "ID_number": ID_number}
+                "res_factor" : res_factor, "bs_per_M": bs_per_M, "ID_number": ID_number}
 
 print("N_P: ", N_P)
 print("N_A=N_B: ", N_A)
@@ -264,7 +271,7 @@ mat_fine[near_boundary] = 1
 # Recalculate all quantities wrt this fine-grained diagram
 
 psol_fine = Polymer_soln(n_bind, v_int, e_m, phi_p_i, phi_a_i_fine, phi_b_i_fine, V_p, V_A, V_B, poly_marks,\
-                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB)
+                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB, bs_per_M)
 
 
 phi_p_f, phi_a_f, phi_b_f, phi_s, phi_Au_mat, phi_Ab_mat, \

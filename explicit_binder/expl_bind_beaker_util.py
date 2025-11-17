@@ -2,7 +2,7 @@ import numpy as np
 
 class Polymer_soln:
     def __init__(self, n_bind, v_int, e_m, phi_p_i, phi_a_i, phi_b_i, V_p, V_A, V_B, poly_marks,\
-                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB):
+                  v_s, v_p, v_A, v_B, N_P, N_A, N_B, b_P, b_A, b_B, chi_AB, bs_per_M):
         self.n_bind = n_bind
         self.v_int = v_int
         self.e_m = e_m
@@ -25,7 +25,7 @@ class Polymer_soln:
         self.b_B = b_B
         self.M = len(poly_marks[0])
         self.chi_AB = chi_AB
-
+        self.bs_per_M = bs_per_M # binding sites per averaged monomer M
 
         # self.N_m = N / self.M
         # self.b = b
