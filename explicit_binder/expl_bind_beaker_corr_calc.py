@@ -4,7 +4,7 @@ from expl_bind_beaker_s3_integrals import *
 from expl_bind_beaker_s4_integrals import *
 
 
-# before- each polymer-based sf had an identical sf integral, 
+# published theory- each polymer-based sf had an identical sf integral, 
 #   only with different binding state correlation average. 
 #   this meant that could calculate all nth order sfs identically, then just
 #   multiply by the appropriate binding average to get al sfs (AA, AB, etc)
@@ -12,7 +12,143 @@ from expl_bind_beaker_s4_integrals import *
 # NOW- multiple differnt forms of the strucutre factor integral and binding correlation
 #   cannot just have a single sf integral for n-order strucutre factor
 
-def calc_sf2(psol, corrs, phis, k):
+# # ds normalization - BAD!!
+# def calc_sf2(psol, corrs, phis, k, plotting=False):
+#     v_P = psol.v_p
+#     N_P = psol.N_P
+#     b_P = psol.b_P
+#     v_A = psol.v_A
+#     N_A = psol.N_A
+#     b_A = psol.b_A
+#     v_B = psol.v_B
+#     N_B = psol.N_B
+#     b_B = psol.b_B
+#     M = psol.M
+#     bs_per_M = psol.bs_per_M
+#     # solv_cons = psol.solv_cons
+#     # phi_p = psol.phi_p
+#     phi_p, phi_Au, phi_Bu, phi_s = phis
+
+#     sA, sB = corrs
+#     sAsA = np.outer(sA, sA)
+#     sBsB = np.outer(sB, sB)
+#     sAsB = np.outer(sA, sB)
+
+#     k = np.linalg.norm(k)
+
+#     x_p = (1/6)*N_P*b_P**2*k**2
+#     x_A = (1/6)*N_A*b_A**2*k**2
+#     x_B = (1/6)*N_B*b_B**2*k**2
+#     x_del = (1/6)*(N_P/(M-1))*b_P**2*k**2
+#     grid = np.indices((M,M))
+#     j1 = grid[0]
+#     j2 = grid[1]
+#     ds = 1# N_P / M # M normaliztion
+    
+#     S_PP = ((2/x_p**2)*(x_p + np.exp(-x_p) - 1))#[0]
+    
+#     S_AuAu = ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))#[0]
+#     # print("SAuAu: ", S_AuAu)
+#     S_BuBu = ((2/x_B**2)*(x_B + np.exp(-x_B) - 1))#[0]
+
+
+#     S_AA = 0
+#     C = np.zeros((M,M))
+#     # diagonal
+#     index = (j1 == j2)
+#     integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))#[0]
+#     corr = sA
+#     C[np.where((index) != 0)] += corr * integral
+# #     print("removed diag")
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_A)**2 * (1- np.exp(-x_A))**2 * np.exp(-x_del*delta)
+#     corr = sAsA
+#     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+
+#     S_AA = ds**2 *np.sum(C)
+#     # print("S_AAbound: ", S_AA)
+
+#     S_BB = 0
+#     C = np.zeros((M,M))
+#     # diagonal
+#     index = (j1 == j2)
+#     integral =  (2/x_B**2)*(x_B + np.exp(-x_B) - 1)
+#     corr = sB
+#     C[np.where((index) != 0)] += corr * integral
+# #     print("removed diag")
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_B)**2 * (1- np.exp(-x_B))**2 * np.exp(-x_del*delta)
+#     corr = sBsB
+#     C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+#     S_BB = ds**2 * np.sum(C)
+
+
+#     S_AB = 0
+#     C = np.zeros((M,M))
+#     #off diagonal
+#     index = (j2 != j1)
+#     delta = np.abs(j1 - j2)
+#     integral = (1/x_B)*(1/x_A) * (1- np.exp(-x_B)) * (1- np.exp(-x_A)) * np.exp(-x_del*delta)
+#     corr = sAsB
+#     C[np.where((index) != 0)] +=  corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+#     S_AB = ds**2 * np.sum(C)
+
+
+#     S_AP = 0
+#     C = np.zeros((M))
+#     j1_arr = np.arange(1, M+1)
+#     integral = (1/x_p)*(1/x_A) * (1- np.exp(-x_A)) * \
+#           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
+#     corr = sA
+#     C = corr * integral
+#     S_AP = ds**1 * np.sum(C)
+
+
+#     S_BP = 0
+#     C = np.zeros((M))
+#     j1_arr = np.arange(1, M+1)
+#     integral = (1/x_p)*(1/x_B) * (1- np.exp(-x_B)) * \
+#           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
+#     corr = sB
+#     C = corr * integral
+#     S_BP = ds**1 * np.sum(C)
+
+#     S_ss = phi_s
+
+#     # P A_bound B_bound A_unbound B_unbound S
+#     # constants: np from z_P; Ns from sf definiton, V_sys form E density
+#     # assume v_P = v_A = v_B
+
+#     # apply sadle point result, but only to unbound sfs
+#     # bound and unbound COMBINED
+#     # AP: n_p N_A N_P / V_sys = N_A phi_p
+#     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
+#     # AuAu: n_Au * N_A**2 / V_sys = phi_Au * N_A
+#     S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
+#           [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
+#           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B, 0],\
+#           [0, 0, 0, S_ss]]
+    
+#     if plotting == True:
+#         # TO PLOT S2s, uncomment this code:
+
+#         # separated bound and unbound components- 6 components total
+#         # P Ab Au Bb Bu S
+#         S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, 0, S_BP*phi_p*N_B, 0, 0,], \
+#             [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P,0 , S_AB*(phi_p*N_A*N_B)/N_P, 0, 0],\
+#             [0,0,S_AuAu*phi_Au*N_A,0,0,0],\
+#             [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, 0,  S_BB*(phi_p*N_B**2)/N_P, 0, 0],\
+#             [0,0,0,0,S_BuBu*phi_Bu*N_B,0],\
+#             [0, 0, 0, 0, 0, S_ss]]
+#         # print("S2 boud and bound separate")
+#     return S2
+
+# 1/M NORMALIZATION- GOOD
+def calc_sf2(psol, corrs, phis, k, plotting=False):
     v_P = psol.v_p
     N_P = psol.N_P
     b_P = psol.b_P
@@ -23,6 +159,7 @@ def calc_sf2(psol, corrs, phis, k):
     N_B = psol.N_B
     b_B = psol.b_B
     M = psol.M
+    bs_per_M = psol.bs_per_M
     # solv_cons = psol.solv_cons
     # phi_p = psol.phi_p
     phi_p, phi_Au, phi_Bu, phi_s = phis
@@ -41,7 +178,7 @@ def calc_sf2(psol, corrs, phis, k):
     grid = np.indices((M,M))
     j1 = grid[0]
     j2 = grid[1]
-
+    # ds = N_P / M # M normaliztion
     
     S_PP = ((2/x_p**2)*(x_p + np.exp(-x_p) - 1))#[0]
     
@@ -55,15 +192,16 @@ def calc_sf2(psol, corrs, phis, k):
     # diagonal
     index = (j1 == j2)
     integral =  ((2/x_A**2)*(x_A + np.exp(-x_A) - 1))#[0]
+    # print(integral)
     corr = sA
-    C[np.where((index) != 0)] += corr * integral
+    C[np.where((index) != 0)] += (1/M)**2 * corr * integral
 #     print("removed diag")
     #off diagonal
     index = (j2 != j1)
     delta = np.abs(j1 - j2)
     integral = (1/x_A)**2 * (1- np.exp(-x_A))**2 * np.exp(-x_del*delta)
     corr = sAsA
-    C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+    C[np.where((index) != 0)] += (1/M)**2 * corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
 
     S_AA = np.sum(C)
     # print("S_AAbound: ", S_AA)
@@ -74,14 +212,14 @@ def calc_sf2(psol, corrs, phis, k):
     index = (j1 == j2)
     integral =  (2/x_B**2)*(x_B + np.exp(-x_B) - 1)
     corr = sB
-    C[np.where((index) != 0)] += corr * integral
+    C[np.where((index) != 0)] += (1/M)**2 * corr * integral
 #     print("removed diag")
     #off diagonal
     index = (j2 != j1)
     delta = np.abs(j1 - j2)
     integral = (1/x_B)**2 * (1- np.exp(-x_B))**2 * np.exp(-x_del*delta)
     corr = sBsB
-    C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+    C[np.where((index) != 0)] += (1/M)**2 * corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
     S_BB = np.sum(C)
 
 
@@ -92,7 +230,7 @@ def calc_sf2(psol, corrs, phis, k):
     delta = np.abs(j1 - j2)
     integral = (1/x_B)*(1/x_A) * (1- np.exp(-x_B)) * (1- np.exp(-x_A)) * np.exp(-x_del*delta)
     corr = sAsB
-    C[np.where((index) != 0)] += corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
+    C[np.where((index) != 0)] += (1/M)**2 * corr[np.where((index) != 0)] * integral[np.where((index) != 0)]
     S_AB = np.sum(C)
 
 
@@ -103,7 +241,7 @@ def calc_sf2(psol, corrs, phis, k):
           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
     corr = sA
     C = corr * integral
-    S_AP = np.sum(C)
+    S_AP = (1/M)**1 * np.sum(C)
 
 
     S_BP = 0
@@ -113,7 +251,7 @@ def calc_sf2(psol, corrs, phis, k):
           (2 - np.exp(-x_del*(j1_arr-1)) - np.exp(-x_p + x_del*(j1_arr-1)))
     corr = sB
     C = corr * integral
-    S_BP = np.sum(C)
+    S_BP = (1/M)**1 * np.sum(C)
 
     S_ss = phi_s
 
@@ -121,25 +259,8 @@ def calc_sf2(psol, corrs, phis, k):
     # constants: np from z_P; Ns from sf definiton, V_sys form E density
     # assume v_P = v_A = v_B
 
-    # OLD MOST CORRECT ALGEBRAICALLY- apply sadle point result, but only to unbound sfs
-    # AP: n_p N_A N_P / V_sys = N_A phi_p
-    # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
-    # AuAu: phi_Au * N_A**2 / V_sys = ? can also try N_A**1
-    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
-    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au*N_A**2, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
-    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B**2, 0],\
-    #       [0, 0, 0, S_ss]]
-    
-
-    # # # # same as above but introduce n_alpha^U to the AuAu along w saddle point result
-    # # # # AuAu = phi_Au * n_au * N_A**2 / V_sys = phi_Au**2 * N_A
-    # S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, S_BP*phi_p*N_B, 0,], \
-    #       [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P +  S_AuAu*phi_Au**2*N_A, S_AB*(phi_p*N_A*N_B)/N_P, 0],\
-    #       [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu**2*N_B, 0],\
-    #       [0, 0, 0, S_ss]]
-
-
-    # TRULY, TRULY CORRECT!!! - apply sadle point result, but only to unbound sfs
+    # apply sadle point result, but only to unbound sfs
+    # bound and unbound COMBINED
     # AP: n_p N_A N_P / V_sys = N_A phi_p
     # AA: n_p N_A N_A / V_sys = n_p N_A N_A N_P / V_sys N_P = phi_p N_A^2 / N_P
     # AuAu: n_Au * N_A**2 / V_sys = phi_Au * N_A
@@ -148,10 +269,19 @@ def calc_sf2(psol, corrs, phis, k):
           [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, S_BB*(phi_p*N_B**2)/N_P + S_BuBu*phi_Bu*N_B, 0],\
           [0, 0, 0, S_ss]]
     
+    if plotting == True:
+        # TO PLOT S2s, uncomment this code:
+
+        # separated bound and unbound components- 6 components total
+        # P Ab Au Bb Bu S
+        S2 = [[S_PP*phi_p*N_P, S_AP*phi_p*N_A, 0, S_BP*phi_p*N_B, 0, 0,], \
+            [S_AP*phi_p*N_A, S_AA*(phi_p*N_A**2)/N_P,0 , S_AB*(phi_p*N_A*N_B)/N_P, 0, 0],\
+            [0,0,S_AuAu*phi_Au*N_A,0,0,0],\
+            [S_BP*phi_p*N_B, S_AB*(phi_p*N_A*N_B)/N_P, 0,  S_BB*(phi_p*N_B**2)/N_P, 0, 0],\
+            [0,0,0,0,S_BuBu*phi_Bu*N_B,0],\
+            [0, 0, 0, 0, 0, S_ss]]
+        # print("S2 boud and bound separate")
     return S2
-
-
-
 
 # define a set of integral functions (e.g. S_AAA^(3,1)), and create a function that, when given appropriate
 # integral functions for (3,1), (3,2), and (3,3) and the k and b and corr identities, returns the sf3
