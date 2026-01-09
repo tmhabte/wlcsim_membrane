@@ -1,16 +1,183 @@
 from expl_bind_beaker_util import *
 
+
+# the version that matches Andy 1/8/25
 def binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M):
+    p_Ab = phi_Au*np.exp(p_markA*e_A) # A bound
+    # p_BmAb = p_markB * phi_Au #B marked A bound
+    p_Bb = phi_Bu*np.exp(p_markB*e_B) #A marked B bound
+    # p_BmBb = p_markB * phi_Bu*np.exp(e_B) #B marked B bound
+
+    q = 1 + p_Ab + p_Bb 
+    s_Aj = (1*p_Ab / q)
+    s_Bj = (1*p_Bb / q)
+    return s_Aj, s_Bj
+
+
+def calc_mu_phi_bind(psol, ):
+    # for each (phi_a_i, phi_b_i) pair going to:
+    # 1) calculate corresponging final volume fractions (phi_p_f scalar; phi_a_f,phi_b_f matrix for each possible pair)
+    # 2) calculate resulting phi_Au, phi_BU using newton raphson
+    # 3) calculate phi_Ab, phi_Bb, binding profiles, and chemical potentials
+
+    phi_p = psol.phi_p # volume fractionsof initila beakers
+    # V_p = psol.V_p # raw volumes of initial beakers
+    phi_au = psol.phi_au
+    # V_A = psol.V_A
+    phi_bu = psol.phi_bu
+    # V_B = psol.V_B
+
+    v_P = psol.v_p
+    N_P = psol.N_P
+    b_P = psol.b_P
+    v_A = psol.v_A
+    N_A = psol.N_A
+    b_A = psol.b_A
+    v_B = psol.v_B
+    N_B = psol.N_B
+    b_B = psol.b_B
+    M = psol.M
+    p_markA, p_markB = psol.poly_marks
+    chi_AB = psol.chi_AB
+    e_A, e_B = psol.e_m
+    bs_per_M = psol.bs_per_M
+
+
+    # phi_p_f = (V_p * phi_p_i) / (V_p + V_A + V_B)
+
+    phi_a_tot = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_b_tot = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_s = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_tot = np.zeros((len(phi_au),len(phi_bu))) - 1 # POST Newton-raphson
+    
+    phi_Au_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_Ab_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_Bu_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    phi_Bb_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    mu_A_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    mu_B_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    fA_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    fB_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    f0_mat = np.zeros((len(phi_au),len(phi_bu))) - 1
+    sA_mat = np.zeros((len(phi_au),len(phi_bu), M)) - 1
+    sB_mat = np.zeros((len(phi_au),len(phi_bu), M)) - 1
+
+    # chi_AB = chi_AB / (N_P * phi_p_f)
+
+    for i in range(len(phi_au)):
+        for j in range(len(phi_bu)):
+            # print("--"*20)
+            phiau_ij = phi_au[i]
+            phibu_ij = phi_bu[j]
+
+
+            s_Aj, s_Bj = binding_state_calc(p_markA, p_markB, phiau_ij, phibu_ij, e_A, e_B, bs_per_M)
+
+            fA = np.mean(s_Aj)
+            fB = np.mean(s_Bj)
+
+            phiab_ij = N_A*M*phi_p*fA / N_P
+            phibb_ij = N_B*M*phi_p*fB / N_P
+
+
+
+            phia_tot_ij = phiab_ij + phiau_ij
+            phib_tot_ij = phibb_ij + phibu_ij
+
+            # phiaf = (V_A * phiai) / (V_p + V_A + V_B)
+            # phibf = (V_B * phibi) / (V_p + V_A + V_B)
+            phisf = 1 - phi_p - phia_tot_ij - phib_tot_ij
+
+            if phisf < 0:
+                continue
+
+            phi_a_tot[i,j] = phia_tot_ij
+            phi_b_tot[i,j] = phib_tot_ij
+            phi_s[i,j] = phisf            
+            phi_Au_mat[i,j] = phiau_ij
+            phi_Bu_mat[i,j] = phibu_ij
+            phi_Ab_mat[i,j] = phiab_ij
+            phi_Bb_mat[i,j] = phibb_ij
+            # phi_Au, phi_Bu = find_unbound(psol, phi_p_f, phiaf, phibf)
+            # phi_Ab = phiaf - phi_Au
+            # phi_Bb = phibf - phi_Bu
+            # print("phiAb, Bb total conserved: ", phi_Ab, phi_Bb)
+
+            # s_Aj, s_Bj  = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M)
+            # fA, fB, f0 = calc_fas(s_Aj, s_Bj, bs_per_M)
+
+            # phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_p_f * np.sum(s_Aj) * bs_per_M # not in s_Aj, s_Bj calc
+            # phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_p_f * np.sum(s_Bj) * bs_per_M 
+            # print("phiAb, Bb from s_A, s_B: ", phi_Ab, phi_Bb)
+
+            # print("phi_p_f", phi_p_f)
+            # print("phiaf", phiaf)
+            # print("phibf", phibf)
+            # print("phis", phi_s)
+
+            # phi_tot_orig = phi_p_f + phiaf + phibf + phisf
+            # phi_tot_calc = phi_p_f + phi_Ab + phi_Au + phi_Bb + phi_Bu + phisf
+            # print("--"*20)
+            # print("phi_tot_orig:", phi_tot_orig)
+            # print("phi_tot_calc:", phi_tot_calc)
+            # print("--"*3)
+            # print("phiA_tot: ", phiaf)
+            # print("phiAu + phiAb: ", phi_Au + phi_Ab)
+            # print("--"*3)
+            # print("phiB_tot: ", phibf)
+            # print("phiBu + phiBb: ", phi_Bu + phi_Bb)
+
+            # # ensure that sum of phiau, phiab, phibu, phibb, phip, phis ~= 1
+            # if not np.isclose(phi_tot_calc, phi_tot_orig, rtol = 1e-6):
+            #     print("phi_tot_orig:", phi_tot_orig)
+            #     print("phi_tot_calc:", phi_tot_calc)
+            #     raise ValueError("phi_totals should match b/w calcs")
+            
+
+
+            mu_A = np.log(phiau_ij) + v_A*N_A*chi_AB*(phibb_ij+phibu_ij)
+            mu_B = np.log(phibu_ij) + v_B*N_B*chi_AB*(phiab_ij+phiau_ij)
+
+            # store results in matrices, and return!!
+            # phi_Au_mat[i,j] = phi_Au
+            # phi_Bu_mat[i,j] = phi_Bu
+            # phi_Ab_mat[i,j] = phi_Ab
+            # phi_Bb_mat[i,j] = phi_Bb
+            mu_A_mat[i,j] = mu_A
+            mu_B_mat[i,j] = mu_B 
+            fA_mat[i,j] = fA
+            fB_mat[i,j] = fB
+            # f0_mat[i,j] = f0 
+            sA_mat[i,j] = s_Aj
+            sB_mat[i,j] = s_Bj
+
+    return phi_s, phi_Au_mat, phi_Ab_mat, \
+    phi_Bu_mat, phi_Bb_mat, mu_A_mat, mu_B_mat, fA_mat, fB_mat, f0_mat, sA_mat, sB_mat
+
+
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+# OLD CALC- uses a 5 possible states model. 
+# doesnt really make sense- each bead has a probability of beang marked A and B,
+# so shouldnt have discreete mark states, onyl didscreet binding states
+def binding_state_calc_OLD(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M):
     p_AmAb = p_markA * phi_Au*np.exp(e_A) #A marked A bound
     p_BmAb = p_markB * phi_Au #B marked A bound
     p_AmBb = p_markA * phi_Bu #A marked B bound
     p_BmBb = p_markB * phi_Bu*np.exp(e_B) #B marked B bound
-    
-    # TODO- think this through
+
+    #TODO- think this through (bs_per_M part. seems right?) NO leads to spinodal at chi=0   
     q = 1 + p_AmAb + p_BmAb + p_AmBb + p_BmBb
-    s_Aj = bs_per_M*(1*p_AmAb + 1*p_BmAb) / q
-    s_Bj = bs_per_M*(1*p_AmBb + 1*p_BmBb) / q
+    s_Aj = ((1*p_AmAb + 1*p_BmAb) / q)# * bs_per_M
+    s_Bj = ((1*p_AmBb + 1*p_BmBb) / q)# * bs_per_M
     return s_Aj, s_Bj
+
 
 def calc_fas(s_bnd_A, s_bnd_B, bs_per_M):
     # [sig_0, sig_A, sig_B, sig_AB] =  calc_sisjs(s_bnd_A, s_bnd_B) #[sig_0, sig_A, sig_B, sig_AB]
@@ -18,14 +185,14 @@ def calc_fas(s_bnd_A, s_bnd_B, bs_per_M):
     sig_B = s_bnd_B
     sig_0 = 1 - s_bnd_A - s_bnd_B
 
-    f_a = np.sum(sig_A) / ((np.sum(np.ones(len(s_bnd_A))))*bs_per_M)
-    f_b = np.sum(sig_B) / ((np.sum(np.ones(len(s_bnd_A))))*bs_per_M)
+    f_a = np.sum(sig_A) / ((np.sum(np.ones(len(s_bnd_A)))))
+    f_b = np.sum(sig_B) / ((np.sum(np.ones(len(s_bnd_A)))))
     # f_ab = np.sum(sig_AB) / (np.sum(np.ones(len(s_bnd_A))))
     f_o = np.sum(sig_0) / (np.sum(np.ones(len(s_bnd_A))))
     return [f_a, f_b, f_o]
 
 
-def calc_mu_phi_bind(psol, ):
+def calc_mu_phi_bind_OLD(psol, ):
     # for each (phi_a_i, phi_b_i) pair going to:
     # 1) calculate corresponging final volume fractions (phi_p_f scalar; phi_a_f,phi_b_f matrix for each possible pair)
     # 2) calculate resulting phi_Au, phi_BU using newton raphson
@@ -96,8 +263,8 @@ def calc_mu_phi_bind(psol, ):
             s_Aj, s_Bj  = binding_state_calc(p_markA, p_markB, phi_Au, phi_Bu, e_A, e_B, bs_per_M)
             fA, fB, f0 = calc_fas(s_Aj, s_Bj, bs_per_M)
 
-            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_p_f * np.sum(s_Aj) # * bs_per_M # put int s_Aj, s_Bj calc
-            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_p_f * np.sum(s_Bj) # * bs_per_M 
+            phi_Ab = ((N_A*v_A)/ (N_P*v_P)) * phi_p_f * np.sum(s_Aj) * bs_per_M # not in s_Aj, s_Bj calc
+            phi_Bb = ((N_B*v_B)/ (N_P*v_P)) * phi_p_f * np.sum(s_Bj) * bs_per_M 
             # print("phiAb, Bb from s_A, s_B: ", phi_Ab, phi_Bb)
 
             # print("phi_p_f", phi_p_f)
@@ -118,10 +285,12 @@ def calc_mu_phi_bind(psol, ):
             # print("phiBu + phiBb: ", phi_Bu + phi_Bb)
 
             # ensure that sum of phiau, phiab, phibu, phibb, phip, phis ~= 1
-            if not np.isclose(phi_tot_calc, phi_tot_orig, rtol = 0.1):
+            if not np.isclose(phi_tot_calc, phi_tot_orig, rtol = 1e-6):
                 print("phi_tot_orig:", phi_tot_orig)
                 print("phi_tot_calc:", phi_tot_calc)
                 raise ValueError("phi_totals should match b/w calcs")
+            
+
 
             mu_A = np.log(phi_Au) + v_A*N_A*chi_AB*(phi_Bb+phi_Bu)
             mu_B = np.log(phi_Bu) + v_B*N_B*chi_AB*(phi_Ab+phi_Au)
